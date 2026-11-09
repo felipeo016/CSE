@@ -11,8 +11,11 @@ ejecutar y explicar lo que desarrolló, y puede pedir un cambio en vivo sobre el
   Se sigue al pie de la letra.
 - `docs/lineamientos-profesora.md`: requisitos académicos obligatorios.
 - `mockup/`: diseño visual. Copia distribución, colores, tipografía, íconos y textos visibles.
-- `referencia-clase/` (si existe): proyecto base y ejercicios de clase. Usa sus versiones y su enfoque
-  (sobre todo mapas con WebView + Leaflet + Zustand). No se compila ni se modifica.
+- `referencia-clase/`: proyecto base y trabajos de clase. No se compila ni se modifica. Úsalos como guía
+  de estilo y convenciones (nombres, forma de servicios, hooks, stores y tipos) y como base del mapa con
+  WebView, Leaflet, Zustand y expo-location. Se toma su enfoque, no sus versiones ni su estructura: la
+  estructura de carpetas la manda la sección 7 de la documentación y la versión de Expo es SDK 58. Si un
+  trabajo difiere, se sigue el proyecto.
 
 Prioridad ante conflicto:
 1. En funcionalidad: lineamientos > documentación > mockup.
@@ -22,7 +25,8 @@ Prioridad ante conflicto:
 
 ## Stack obligatorio
 
-- React Native + TypeScript (strict) + Expo, con Expo Router. Versiones de `referencia-clase/` si existe.
+- React Native + TypeScript (strict) + Expo SDK 58, con Expo Router. Las versiones son las de
+  `package.json` (SDK 58), aunque los trabajos de `referencia-clase/` usen otra.
 - NativeWind para estilos; al menos una fuente personalizada (expo-font); react-native-safe-area-context.
 - Zustand para estado compartido entre pantallas; persist con AsyncStorage solo para sesión y carrito.
 - TanStack Query para estado remoto (queryKey por recurso, staleTime/gcTime definidos).
@@ -52,6 +56,11 @@ Si Expo Router o una pantalla obliga a cambiar la estructura, haz el cambio mín
 - Nunca confirmes un envío o registro sin respuesta exitosa del servidor. Sin conexión: se informa y no
   se crea nada; Reintentar completa la acción cuando vuelve la conexión (RNF-08).
 - Los efectos que abren suscripciones (ubicación, AppState, listeners) siempre devuelven limpieza.
+- Mapa: Leaflet en versión fija 1.9.4; las coordenadas que recibe el mapa se validan como números antes
+  de usarlas.
+- Zustand guarda solo estado local compartido (sesión, carrito, mapa). Los datos del servidor se piden y
+  se guardan con TanStack Query, nunca dentro de un store.
+- El permiso de ubicación se pide solo al usar el mapa, nunca al abrir la app (RNF-13).
 - Formularios: mensaje específico por campo, no quedan tapados por el teclado, botón con estado de carga
   y sin doble envío. Respeta las áreas seguras.
 - Textos de la UI en español. Usa exactamente los textos que cita la documentación, por ejemplo:
