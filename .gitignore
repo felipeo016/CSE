@@ -5,15 +5,43 @@ referencia-clase/**/node_modules/
 # Expo y build
 .expo/
 dist/
+web-build/
+expo-env.d.ts
 
-# Variables de entorno
+# Carpetas nativas generadas (Continuous Native Generation)
+/ios
+/android
+.kotlin/
+
+# Variables de entorno (se sube solo .env.template)
 .env
 .env.local
+.env*.local
+
+# Cachés
+.metro-health-check*
+*.tsbuildinfo
+.cache/
+
+# Llaves y certificados
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+*.orig.*
 
 # Logs y sistema
 *.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 .DS_Store
+Thumbs.db
 
 # Documentos de trabajo locales (no se suben)
 Documentación del proyecto final.docx
 Proyecto_Final_Movil_II (1).docx
+
+# Nota: package-lock.json SÍ se sube (RNF-04).
