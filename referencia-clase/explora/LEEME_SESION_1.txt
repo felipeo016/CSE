@@ -1,0 +1,18 @@
+PARCIAL 2 MÓVIL 2 - Explora
+Este ZIP contiene SOLO el proyecto base para la sesión 1.
+Requiere Node y dependencias previamente instaladas en los equipos.
+Abrir carpeta, npm install (si es necesario), npx expo start.
+No contiene la guía ni las instrucciones de la sesión 2.
+No cambiar Expo SDK 57, NativeWind 4.2.7 ni Tailwind 3.4.17.
+No entregar node_modules ni .expo.
+
+RECURSOS: assets/images/registro_1.png a registro_4.png. Mapa de require: data/registros.ts > imagenesPorId.
+
+
+APLICATIVO ASIGNADO
+Explora — Explorador de lugares de interés
+DESTINATARIOS: Personas que buscan ideas para conocer sitios de su ciudad
+OBJETIVO: Examinar cuatro sitios de interés, reconocer su tipo y abrir la información de cada lugar. En esta sesión no se pide mapa ni GPS.
+EJEMPLOS: Parque Central, Mirador, Museo Local y Sendero Verde
+RECORRIDO: catálogo > ficha por ID > regreso; Tabs y Drawer funcionales.
+No se desarrollan ni revelan requisitos de sesión 2.
