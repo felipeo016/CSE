@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+referencia-clase/**/node_modules/
+
+# Expo y build
+.expo/
+dist/
+
+# Variables de entorno
+.env
+.env.local
+
+# Logs y sistema
+*.log
+.DS_Store
+
+# Documentos de trabajo locales (no se suben)
+Documentación del proyecto final.docx
+Proyecto_Final_Movil_II (1).docx
