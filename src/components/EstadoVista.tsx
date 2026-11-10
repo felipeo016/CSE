@@ -2,12 +2,13 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import Boton from './Boton';
+import { COLORES } from '../config/colores';
 import type { EstadoVistaProps, NombreIcono, TipoEstadoVista } from '../types/props.types';
 
 // Ícono y color de cada estado (la carga usa un indicador en lugar de ícono).
 const ICONOS: Record<Exclude<TipoEstadoVista, 'carga'>, { nombre: NombreIcono; color: string }> = {
-  error: { nombre: 'alert-circle', color: '#DC2626' },
-  vacio: { nombre: 'inbox', color: '#2563EB' },
+  error: { nombre: 'alert-circle', color: COLORES.error },
+  vacio: { nombre: 'inbox', color: COLORES.primario },
 };
 
 /**
@@ -18,7 +19,7 @@ export default function EstadoVista({ tipo, mensaje, detalle, accion }: EstadoVi
   return (
     <View className="flex-1 items-center justify-center px-pantalla py-seccion">
       {tipo === 'carga' ? (
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={COLORES.primario} />
       ) : (
         <Feather name={ICONOS[tipo].nombre} size={56} color={ICONOS[tipo].color} />
       )}

@@ -99,6 +99,7 @@ export default function Registro() {
             error={errores.nombre}
             autoCapitalize="words"
             icono="user"
+            etiquetaDentro
           />
 
           <CampoTexto
@@ -109,6 +110,7 @@ export default function Registro() {
             error={errores.telefono}
             tipoTeclado="phone-pad"
             icono="phone"
+            etiquetaDentro
           />
 
           <CampoTexto
@@ -120,6 +122,7 @@ export default function Registro() {
             tipoTeclado="email-address"
             autoCapitalize="none"
             icono="mail"
+            etiquetaDentro
           />
 
           <CampoTexto
@@ -131,6 +134,7 @@ export default function Registro() {
             autoCapitalize="none"
             esContrasena
             icono="lock"
+            etiquetaDentro
           />
 
           <View className="mt-bloque">

@@ -55,6 +55,11 @@ export interface CampoTextoProps {
   icono?: NombreIcono;
   /** Por defecto 'sentences'; en correo y contraseña se usa 'none'. */
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /**
+   * true: la etiqueta va dentro del recuadro, en letra pequeña sobre el valor (mockup de Registro).
+   * false (por defecto): la etiqueta va encima del recuadro (mockup de Iniciar sesión).
+   */
+  etiquetaDentro?: boolean;
 }
 
 /** Pantalla que pertenece a un prompt futuro: título y aviso "En construcción — [ID]". */

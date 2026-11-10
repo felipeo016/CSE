@@ -1,13 +1,14 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
+import { COLORES } from '../config/colores';
 import type { BotonProps, VarianteBoton } from '../types/props.types';
 
-// Clases y color de texto de cada variante, tomados del mockup.
+// Clases de cada variante (tomadas del mockup) y el color del ícono y del indicador de carga.
 const ESTILOS: Record<VarianteBoton, { contenedor: string; texto: string; color: string }> = {
-  primario: { contenedor: 'bg-primario', texto: 'text-white', color: '#FFFFFF' },
-  secundario: { contenedor: 'border border-primario bg-fondo', texto: 'text-primario', color: '#2563EB' },
-  peligro: { contenedor: 'border border-error bg-fondo', texto: 'text-error', color: '#DC2626' },
+  primario: { contenedor: 'bg-primario', texto: 'text-fondo', color: COLORES.fondo },
+  secundario: { contenedor: 'border border-primario bg-fondo', texto: 'text-primario', color: COLORES.primario },
+  peligro: { contenedor: 'border border-error bg-fondo', texto: 'text-error', color: COLORES.error },
 };
 
 /** Botón reutilizable con variantes, estado deshabilitado y estado de carga (RF-09). */
