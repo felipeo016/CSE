@@ -1,0 +1,76 @@
+# Integración continua: revisa cada PR hacia main y cada push a main.
+# Si un paso falla, el PR muestra una X roja y el detalle queda en la pestaña "Checks".
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Si llega un commit nuevo al mismo PR (o rama), se cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  revisar:
+    name: Revisar proyecto
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Valores FALSOS de ejemplo: en GitHub no hay .env y la app solo necesita que existan
+    # para compilar. Nunca poner aquí las llaves reales.
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: https://proyecto-de-ejemplo.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: llave-publica-falsa-de-ejemplo
+      CI: true
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Node.js 26 con caché de npm
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Revisar que no se suban secretos
+        shell: bash
+        run: |
+          fallo=0
+
+          # 1) Ningún archivo .env versionado (sí se permite la plantilla .env.template).
+          envs=$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.(template|example)$' || true)
+          if [ -n "$envs" ]; then
+            echo "::error::Hay archivos .env versionados. Quítalos con 'git rm --cached':"
+            echo "$envs"
+            fallo=1
+          fi
+
+          # 2) Ninguna llave secreta con valor. Se excluyen los .md, que solo nombran
+          #    estas llaves como regla ("nunca uses la service_role").
+          patron='sb_secret_[A-Za-z0-9_-]{10,}|service_role[A-Za-z_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9._-]{20,}'
+          if git grep -n -I -i -E "$patron" -- . ':(exclude)*.md'; then
+            echo "::error::Se encontró una llave secreta (sb_secret_ o service_role) con valor en un archivo versionado."
+            fallo=1
+          fi
+
+          if [ "$fallo" -ne 0 ]; then exit 1; fi
+          echo "Sin secretos versionados."
+
+      - name: Instalar dependencias (npm ci)
+        run: npm ci
+
+      - name: Revisar tipos de TypeScript
+        run: npm run typecheck
+
+      - name: Revisar el proyecto con expo-doctor
+        run: npx expo-doctor
+
+      - name: Compilar el bundle de Android
+        run: npx expo export --platform android --output-dir dist
