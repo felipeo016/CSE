@@ -10,7 +10,7 @@ Equipo: Felipe Obregón Castro y Juan Pablo Murillo Villalobos.
 
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) 20 o superior (incluye npm).
+- [Node.js](https://nodejs.org/) 22 (desde 22.13), 24 (desde 24.3) o 26 en adelante; Expo SDK 58 no acepta otras versiones. El CI usa Node 26.
 - Git.
 - Un teléfono Android con la app **Expo Go** (Play Store), compatible con **Expo SDK 58**.
 - El computador y el teléfono conectados a la misma red Wi-Fi.
@@ -46,6 +46,23 @@ npx expo start
 | --- | --- |
 | `npm run typecheck` | Revisa los tipos de TypeScript sin generar archivos. |
 | `npx expo start --clear` | Arranca limpiando la caché (después de cambiar `.env` o `tailwind.config.js`). |
+
+## Integración continua
+
+Cada pull request hacia `main` (y cada push a `main`) corre en GitHub Actions el flujo
+`.github/workflows/ci.yml`, en Ubuntu con Node.js 26. Revisa, en orden:
+
+1. Que no haya un `.env` versionado ni llaves secretas (`sb_secret_…`, `service_role`) con valor.
+2. `npm ci`: que las dependencias se instalen tal como están en `package-lock.json`.
+3. `npm run typecheck`: que TypeScript no tenga errores.
+4. `npx expo-doctor`: que las versiones sean compatibles con Expo SDK 58.
+5. `npx expo export --platform android`: que el bundle de Android compile (con valores falsos de
+   Supabase, porque en GitHub no hay `.env`).
+
+**Si un PR sale en rojo:** abre la pestaña *Checks* del PR, entra al paso con la X y lee el error.
+Repite ese mismo comando en tu computador, corrígelo y sube un commit nuevo a la misma rama: la
+revisión vuelve a correr sola. Si el error es de secretos, quita el archivo con
+`git rm --cached <archivo>` y cambia esa llave en Supabase, porque ya quedó en el historial.
 
 ## Tecnologías
 
