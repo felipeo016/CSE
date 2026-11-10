@@ -2,8 +2,10 @@ import type { ComponentProps, ReactNode } from 'react';
 import type { KeyboardTypeOptions } from 'react-native';
 import type { Feather } from '@expo/vector-icons';
 
+import type { LineaCarrito, ServicioCarrito } from '../models/Carrito';
 import type { Cliente } from '../models/Cliente';
 import type { SolicitudCreada } from '../models/Cotizacion';
+import type { ProductoPersonal, ProductoSegunRol } from '../models/Producto';
 import type { Rol, Usuario } from '../models/Usuario';
 
 /** Nombre de un ícono del set Feather (@expo/vector-icons), el estilo de íconos del mockup. */
@@ -196,4 +198,100 @@ export interface SelectorProductosInteresProps {
 /** Mensaje de solicitud registrada, con el número que devolvió el servidor. */
 export interface ConfirmacionSolicitudProps {
   solicitud: SolicitudCreada;
+}
+
+/** Imagen de un producto; si no tiene o no carga, muestra la imagen alternativa (RNF-02). */
+export interface ImagenProductoProps {
+  imagenUrl: string | null;
+  /** 'miniatura' en tarjetas y carrito; 'grande' en el detalle. */
+  tamano: 'miniatura' | 'grande';
+}
+
+/** Botón opcional de la tarjeta de producto, por ejemplo "+ Agregar" en el catálogo del cliente. */
+export interface AccionTarjetaProducto {
+  texto: string;
+  icono?: NombreIcono;
+  onPress: () => void;
+}
+
+/** Tarjeta de producto del catálogo (mockup de Catálogo, RF-05, RF-09). */
+export interface TarjetaProductoProps {
+  nombre: string;
+  /** null si el producto no tiene código: se muestra "Sin código". */
+  codigo: string | null;
+  /** Nombre legible de la marca y de la categoría (NOMBRE_MARCA, NOMBRE_CATEGORIA). */
+  marca: string;
+  categoria: string;
+  /** Precio en pesos; null si no hay precio registrado para el cliente. */
+  precio: number | null;
+  /** Unidades disponibles. Con 0 se muestra la etiqueta "Agotado". */
+  inventario: number;
+  imagenUrl: string | null;
+  /** Abre el detalle del producto. */
+  onPress: () => void;
+  /** Botón opcional; no se muestra si el producto está agotado o no tiene precio. */
+  accion?: AccionTarjetaProducto;
+}
+
+/** Etiqueta verde "Disponibles: N" o roja "Agotado". */
+export interface EtiquetaDisponibilidadProps {
+  inventario: number;
+}
+
+/**
+ * Contador contextual de cantidad (RF-10, RF-16): botones − y + y entrada escrita a mano.
+ * La cantidad válida va de `minimo` a `maximo` (el inventario).
+ */
+export interface ContadorCantidadProps {
+  valor: number;
+  /** Unidades disponibles: el + se deshabilita al llegar aquí. */
+  maximo: number;
+  /** Por defecto 1: el − no baja de aquí. */
+  minimo?: number;
+  /** Se llama solo con cantidades válidas. */
+  onCambiar: (cantidad: number) => void;
+  /** Nombre del producto para el lector de pantalla, por ejemplo "Cantidad de DVR 4 canales". */
+  etiquetaAccesible?: string;
+}
+
+/** Chip de filtro (mockup de Catálogo: Cámaras, DVR, WiFi...). El activo va en azul. */
+export interface ChipFiltroProps {
+  etiqueta: string;
+  activo: boolean;
+  onPress: () => void;
+}
+
+/** Precios que ve el personal en el detalle: cliente final, instalador y costo. */
+export interface PreciosPersonalProps {
+  producto: ProductoPersonal;
+}
+
+/** Parte del detalle donde el cliente elige la cantidad y agrega al carrito. */
+export interface CompraClienteProps {
+  producto: ProductoSegunRol;
+}
+
+/** Una fila "etiqueta ........ valor" del resumen del carrito. */
+export interface FilaResumenProps {
+  etiqueta: string;
+  valor: string;
+  /** 'total' la muestra grande y en negrita; 'descuento' en verde. */
+  variante?: 'normal' | 'descuento' | 'total';
+}
+
+/** Una línea del carrito con su contador y el botón Quitar. */
+export interface LineaCarritoItemProps {
+  linea: LineaCarrito;
+}
+
+/** Resumen del total del carrito (subtotal, descuento, impuesto, servicio y total). */
+export interface ResumenCarritoProps {
+  lineas: LineaCarrito[];
+  servicio: ServicioCarrito;
+}
+
+/** Opciones de servicio del carrito: sin servicio, instalación o mantenimiento (suma la tarifa). */
+export interface SelectorServicioProps {
+  servicio: ServicioCarrito;
+  onCambiar: (servicio: ServicioCarrito) => void;
 }

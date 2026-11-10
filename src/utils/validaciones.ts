@@ -68,6 +68,31 @@ export function numeroNoNegativo(valor: string): ResultadoValidacion {
   return Number(texto) < 0 ? 'El valor no puede ser negativo' : null;
 }
 
+/** Texto exacto de RF-10 cuando se pide más de lo que hay en inventario. */
+export function mensajeInventario(disponibles: number): string {
+  return `Solo hay ${disponibles} unidades disponibles`;
+}
+
+/**
+ * Cantidad escrita a mano en el carrito o en la cotización (sección 5, RF-10, RF-16):
+ * entero entre 1 y las unidades disponibles. Rechaza vacío, texto, decimales y negativos.
+ */
+export function cantidadValida(valor: string, disponibles: number): ResultadoValidacion {
+  const texto = valor.trim();
+  // Solo dígitos (con un "-" opcional para poder dar el mensaje de mínimo). Así "1e2" o "2,5" no pasan.
+  if (!/^-?\d+([.,]\d+)?$/.test(texto)) {
+    return 'Ingrese un valor numérico';
+  }
+  if (/[.,]/.test(texto)) {
+    return 'Ingrese un número entero, sin decimales';
+  }
+  const cantidad = Number(texto);
+  if (cantidad < 1) {
+    return 'La cantidad mínima es 1';
+  }
+  return cantidad > disponibles ? mensajeInventario(disponibles) : null;
+}
+
 /**
  * Devuelve el primer error de una lista de validaciones, o null si todas pasan.
  * Ejemplo: primerError(requerido(correo, 'su correo electrónico'), correoValido(correo)).

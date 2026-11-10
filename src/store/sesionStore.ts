@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Usuario } from '../models/Usuario';
 import { queryClient } from '../services/queryClient';
+import { useCarritoStore } from './carritoStore';
 
 /**
  * Store de la sesión (RF-04). Guarda solo el estado local de la sesión; las peticiones a Supabase
@@ -47,7 +48,8 @@ export const useSesionStore = create<SesionState>()(
         set({ token: null, refreshToken: null, usuario: null });
         // Los datos del servidor del usuario anterior no deben verse con otra cuenta.
         queryClient.clear();
-        // PENDIENTE J3: vaciar aquí el carrito (carritoStore aún no existe).
+        // El carrito es del usuario que cierra sesión: no debe verlo la siguiente cuenta (RF-11).
+        useCarritoStore.getState().vaciar();
       },
     }),
     {

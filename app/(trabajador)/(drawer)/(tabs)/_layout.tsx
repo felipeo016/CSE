@@ -25,9 +25,11 @@ export default function PestanasTrabajador() {
         options={{
           title: 'Panel',
           tabBarIcon: iconoPestana('bar-chart-2'),
-          // href: null quita la pestaña de la barra. Si un trabajador escribe la ruta a mano,
-          // la pantalla muestra "Acceso no autorizado" (RutaProtegida dentro de panel.tsx).
-          href: esAdministrador ? undefined : null,
+          // Al trabajador no se le dibuja el botón de la pestaña, pero la ruta sigue registrada:
+          // si escribe /panel a mano, la pantalla muestra "Acceso no autorizado" (RutaProtegida
+          // dentro de panel.tsx, CP-12). No se usa href: null porque oculta la ruta y Expo Router
+          // redirige a la primera pestaña (Productos) sin ningún mensaje.
+          tabBarButton: esAdministrador ? undefined : () => null,
         }}
       />
     </Tabs>

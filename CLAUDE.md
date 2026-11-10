@@ -35,7 +35,8 @@ Prioridad ante conflicto:
   Axios. NO instalar `@supabase/supabase-js`: Axios es lo que se evalúa.
 - Mapa: OpenStreetMap + Leaflet dentro de react-native-webview; ubicación con expo-location (solo primer plano).
 - También permitidas: @react-native-community/netinfo, @react-native-community/datetimepicker,
-  expo-splash-screen, @expo/vector-icons (set Feather). Cualquier otra librería: pregunta antes.
+  expo-splash-screen, @expo/vector-icons (set Feather), react-native-gesture-handler (lo exige el
+  Drawer). Cualquier otra librería: pregunta antes.
 
 ## Estructura
 
