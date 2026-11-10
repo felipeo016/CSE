@@ -16,7 +16,7 @@ export async function obtenerParametros(): Promise<ParametrosNegocio> {
     // Solo pasa si la base no se montó completa (falta la fila de 001_esquema.sql).
     const error: ErrorApi = {
       tipo: 'servidor',
-      mensaje: 'No se encontraron los parámetros del negocio. Intente más tarde.',
+      mensaje: 'No se encontraron los parámetros del negocio. Intenta más tarde.',
     };
     throw error;
   }
