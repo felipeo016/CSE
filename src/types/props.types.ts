@@ -1,8 +1,8 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import type { KeyboardTypeOptions } from 'react-native';
 import type { Feather } from '@expo/vector-icons';
 
-import type { Usuario } from '../models/Usuario';
+import type { Rol, Usuario } from '../models/Usuario';
 
 /** Nombre de un ícono del set Feather (@expo/vector-icons), el estilo de íconos del mockup. */
 export type NombreIcono = ComponentProps<typeof Feather>['name'];
@@ -69,6 +69,11 @@ export interface PantallaEnConstruccionProps {
   titulo: string;
   /** ID del prompt que completará la pantalla, por ejemplo 'J3'. */
   prompt: string;
+  /**
+   * true en las pantallas Stack, donde el título ya aparece en el encabezado junto a la flecha
+   * atrás; así no se repite. Por defecto false (el título grande va dentro de la pantalla).
+   */
+  tituloEnEncabezado?: boolean;
 }
 
 /** Formulario de Perfil: recibe los datos de la cuenta ya cargados del servidor. */
@@ -76,8 +81,30 @@ export interface FormularioPerfilProps {
   usuario: Usuario;
 }
 
-/** Botón TEMPORAL hasta J2 que abre el Perfil desde las pestañas. */
-export interface AccesoPerfilTemporalProps {
-  /** Ruta del Perfil del rol, por ejemplo '/(cliente)/perfil'. */
-  ruta: '/(cliente)/perfil' | '/(trabajador)/perfil';
+/** Envuelve una pantalla o un grupo y solo la muestra a los roles permitidos (RF-03, RNF-05). */
+export interface RutaProtegidaProps {
+  roles: readonly Rol[];
+  children: ReactNode;
+}
+
+/** Una opción del menú lateral (Drawer). */
+export interface OpcionMenu {
+  /** Nombre de la pantalla dentro del Drawer: el archivo sin extensión, por ejemplo 'mis-pedidos'. */
+  pantalla: string;
+  etiqueta: string;
+  icono: NombreIcono;
+}
+
+/** Contenido personalizado del Drawer: datos del usuario, opciones de su rol y Cerrar sesión. */
+export interface MenuLateralProps {
+  opciones: OpcionMenu[];
+  /** Pantalla abierta en el Drawer, para resaltar su opción. */
+  pantallaActual: string;
+  /** Abre la pantalla elegida y cierra el menú. */
+  onElegir: (pantalla: string) => void;
+}
+
+/** Botón de las tres rayas que abre el Drawer. */
+export interface BotonMenuProps {
+  onPress: () => void;
 }

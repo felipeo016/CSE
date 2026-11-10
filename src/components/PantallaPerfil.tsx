@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
 import Boton from './Boton';
 import CampoTexto from './CampoTexto';
 import EstadoVista from './EstadoVista';
+import { useCerrarSesion } from '../hooks/useCerrarSesion';
 import { useActualizarPerfil, usePerfil } from '../hooks/usePerfil';
-import { cerrarSesion } from '../services/auth.service';
 import { mensajeDeError } from '../services/api';
 import { NOMBRE_ROL } from '../models/Usuario';
 import type { FormularioPerfilProps } from '../types/props.types';
@@ -25,12 +24,12 @@ const SIN_ERRORES: ErroresPerfil = { nombre: null, telefono: null };
 
 /**
  * Perfil (todos los roles): datos de la cuenta y edición de nombre y teléfono.
- * La usan app/(cliente)/perfil.tsx y app/(trabajador)/perfil.tsx.
+ * La usan app/(cliente)/(drawer)/perfil.tsx y app/(trabajador)/(drawer)/perfil.tsx; se abre desde el Drawer.
  */
 export default function PantallaPerfil() {
   const consulta = usePerfil();
 
-  // La pantalla completa se protege arriba y abajo: aún no está dentro del Drawer (J2).
+  // SafeAreaView solo agrega el espacio que tapa el sistema: arriba ya está el encabezado del Drawer.
   return (
     <SafeAreaView className="flex-1 bg-fondo">
       {consulta.isPending ? (
@@ -51,14 +50,13 @@ export default function PantallaPerfil() {
 
 /** Formulario con los datos ya cargados. Se separa para iniciar el estado con los datos del servidor. */
 function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
-  const router = useRouter();
   const guardar = useActualizarPerfil();
+  const { confirmarCierre, cerrando } = useCerrarSesion();
   const [formulario, setFormulario] = useState<FormularioPerfil>({
     nombre: usuario.nombre,
     telefono: usuario.telefono ?? '',
   });
   const [errores, setErrores] = useState<ErroresPerfil>(SIN_ERRORES);
-  const [cerrando, setCerrando] = useState(false);
 
   // Si los datos del servidor cambian (por ejemplo, al guardar), el formulario los toma.
   useEffect(() => {
@@ -90,21 +88,6 @@ function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
     }
     // mutate no se repite si ya está enviando: el botón queda bloqueado con "cargando".
     guardar.mutate(formulario);
-  }
-
-  function confirmarCierre() {
-    Alert.alert('Cerrar sesión', '¿Desea cerrar sesión en este dispositivo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: async () => {
-          setCerrando(true);
-          await cerrarSesion();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
   }
 
   return (
@@ -163,7 +146,7 @@ function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
           />
         </View>
 
-        {/* TEMPORAL hasta J2: Cerrar sesión pasa al Drawer; aquí se conserva mientras tanto. */}
+        {/* Cerrar sesión también está en el Drawer; aquí queda como acceso adicional. */}
         <View className="mt-bloque">
           <Boton
             texto="Cerrar sesión"
@@ -173,13 +156,6 @@ function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
             icono="log-out"
           />
         </View>
-
-        {/* TEMPORAL hasta J2: sin Drawer, este botón regresa a las pestañas. */}
-        {router.canGoBack() ? (
-          <View className="mt-bloque">
-            <Boton texto="Volver" onPress={() => router.back()} variante="secundario" icono="arrow-left" />
-          </View>
-        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
