@@ -1,0 +1,77 @@
+/**
+ * Validaciones de formularios. Son funciones puras: reciben el texto del campo y devuelven
+ * el mensaje de error en español, o null si el valor es válido.
+ */
+
+/** Resultado de una validación: el mensaje de error o null si el valor es válido. */
+export type ResultadoValidacion = string | null;
+
+/** Mínimo de caracteres de la contraseña: es el mínimo que exige Supabase Auth por defecto. */
+export const LONGITUD_MINIMA_CONTRASENA = 6;
+
+/** Dígitos que acepta el servidor para el teléfono (docs/servicio-remoto.md, registro). */
+export const DIGITOS_MINIMOS_TELEFONO = 7;
+export const DIGITOS_MAXIMOS_TELEFONO = 15;
+
+// Formato básico de correo: texto@texto.dominio, sin espacios.
+const FORMATO_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * El campo no puede quedar vacío (los espacios solos cuentan como vacío).
+ * @param campo cómo se nombra el campo en el mensaje, por ejemplo "su correo electrónico".
+ */
+export function requerido(valor: string, campo: string): ResultadoValidacion {
+  return valor.trim() === '' ? `Ingrese ${campo}` : null;
+}
+
+/** Correo con formato nombre@dominio.com. Indica el formato esperado si no lo cumple. */
+export function correoValido(valor: string): ResultadoValidacion {
+  return FORMATO_CORREO.test(valor.trim())
+    ? null
+    : 'Ingrese un correo con el formato nombre@dominio.com';
+}
+
+/** Teléfono solo con números (se permiten espacios para separar) y de 7 a 15 dígitos. */
+export function telefonoValido(valor: string): ResultadoValidacion {
+  const digitos = valor.replace(/\s/g, '');
+  if (!/^\d+$/.test(digitos)) {
+    return 'El teléfono solo debe contener números';
+  }
+  if (digitos.length < DIGITOS_MINIMOS_TELEFONO || digitos.length > DIGITOS_MAXIMOS_TELEFONO) {
+    return `El teléfono debe tener entre ${DIGITOS_MINIMOS_TELEFONO} y ${DIGITOS_MAXIMOS_TELEFONO} dígitos`;
+  }
+  return null;
+}
+
+/** Contraseña con el mínimo de caracteres. */
+export function contrasenaMinima(valor: string): ResultadoValidacion {
+  return valor.length < LONGITUD_MINIMA_CONTRASENA
+    ? `La contraseña debe tener al menos ${LONGITUD_MINIMA_CONTRASENA} caracteres`
+    : null;
+}
+
+/** Número entero, sin decimales ni texto (por ejemplo, una cantidad). */
+export function numeroEntero(valor: string): ResultadoValidacion {
+  const texto = valor.trim();
+  if (texto === '' || Number.isNaN(Number(texto))) {
+    return 'Ingrese un valor numérico';
+  }
+  return Number.isInteger(Number(texto)) ? null : 'Ingrese un número entero, sin decimales';
+}
+
+/** Número mayor o igual que cero (por ejemplo, un precio o un inventario). */
+export function numeroNoNegativo(valor: string): ResultadoValidacion {
+  const texto = valor.trim();
+  if (texto === '' || Number.isNaN(Number(texto))) {
+    return 'Ingrese un valor numérico';
+  }
+  return Number(texto) < 0 ? 'El valor no puede ser negativo' : null;
+}
+
+/**
+ * Devuelve el primer error de una lista de validaciones, o null si todas pasan.
+ * Ejemplo: primerError(requerido(correo, 'su correo electrónico'), correoValido(correo)).
+ */
+export function primerError(...resultados: ResultadoValidacion[]): ResultadoValidacion {
+  return resultados.find((resultado) => resultado !== null) ?? null;
+}
