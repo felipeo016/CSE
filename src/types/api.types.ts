@@ -122,3 +122,77 @@ export interface PerfilActualizacionApi {
   nombre: string;
   telefono: string;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Productos (RF-05, RF-08, RNF-06)
+// ---------------------------------------------------------------------------------------------
+
+/** Marcas permitidas por la tabla productos. */
+export type MarcaApi = 'Hikvision' | 'EZVIZ' | 'HiLook';
+
+/** Códigos de las ocho categorías de RF-07, como los guarda la base. */
+export type CategoriaApi =
+  | 'dvr'
+  | 'camaras_turbo_hd'
+  | 'camaras_wifi_ip'
+  | 'kits'
+  | 'alarmas_sensores'
+  | 'discos_duros'
+  | 'fuentes_ups'
+  | 'accesorios_cableado';
+
+/** Tipo de comprador: define qué precio ve y paga (tabla clientes, columna tipo). */
+export type TipoClienteApi = 'instalador' | 'final';
+
+/**
+ * Fila de la vista productos_catalogo (lo que recibe el cliente).
+ * No tiene costo (RNF-06) y trae un solo precio: el del tipo del cliente con sesión.
+ * PostgREST entrega las columnas numeric como números JSON.
+ */
+export interface ProductoCatalogoApi {
+  id: string;
+  codigo: string | null;
+  nombre: string;
+  descripcion: string | null;
+  marca: MarcaApi;
+  categoria: CategoriaApi;
+  /** Puede ser null: un instalador ve null si el producto no tiene precio de instalador. */
+  precio: number | null;
+  tipo_precio: TipoClienteApi;
+  inventario: number;
+  imagen_url: string | null;
+}
+
+/** Fila completa de la tabla productos (solo la recibe el personal: trabajador y administrador). */
+export interface ProductoPersonalApi {
+  id: string;
+  codigo: string | null;
+  nombre: string;
+  descripcion: string | null;
+  marca: MarcaApi;
+  categoria: CategoriaApi;
+  costo: number;
+  /** Puede faltar en el Excel. */
+  precio_instalador: number | null;
+  precio_cliente_final: number;
+  inventario: number;
+  imagen_url: string | null;
+  activo: boolean;
+  es_prueba: boolean;
+  creado_en: string;
+  actualizado_en: string;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Parámetros del negocio (sección 5)
+// ---------------------------------------------------------------------------------------------
+
+/** Única fila de la tabla parametros_negocio (id = 1). */
+export interface ParametrosNegocioApi {
+  id: number;
+  impuesto_porcentaje: number;
+  tarifa_instalacion: number;
+  tarifa_mantenimiento: number;
+  vigencia_dias: number;
+  actualizado_en: string;
+}
