@@ -1,10 +1,22 @@
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import Boton from '../../src/components/Boton';
 import CampoTexto from '../../src/components/CampoTexto';
+import { registrarCliente } from '../../src/services/auth.service';
+import { CODIGOS_AUTH, esErrorApi, mensajeDeError } from '../../src/services/api';
+import { rutaInicioPorRol } from '../../src/utils/navegacion';
 import {
   contrasenaMinima,
   correoValido,
@@ -32,14 +44,23 @@ export default function Registro() {
   const router = useRouter();
   const [formulario, setFormulario] = useState<FormularioRegistro>(FORMULARIO_VACIO);
   const [errores, setErrores] = useState<ErroresRegistro>(SIN_ERRORES);
+  // Error que no es de un campo: sin conexión, error del servidor...
+  const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   // Actualiza un campo y borra su error para que el mensaje desaparezca al corregirlo.
   function cambiarCampo(campo: keyof FormularioRegistro, valor: string) {
     setFormulario((anterior) => ({ ...anterior, [campo]: valor }));
     setErrores((anteriores) => ({ ...anteriores, [campo]: null }));
+    setErrorGeneral(null);
   }
 
-  function crearCuenta() {
+  async function crearCuenta() {
+    // Evita el doble envío mientras espera la respuesta.
+    if (enviando) {
+      return;
+    }
+
     const nuevosErrores: ErroresRegistro = {
       nombre: requerido(formulario.nombre, 'su nombre'),
       correo: primerError(
@@ -63,9 +84,31 @@ export default function Registro() {
       return;
     }
 
-    // TEMPORAL hasta F3: aquí F3 creará la cuenta en Supabase Auth y avisará si el correo ya está
-    // registrado. Por ahora todo envío válido lleva a las pestañas del cliente.
-    router.replace('/(cliente)/(tabs)/inicio');
+    setEnviando(true);
+    setErrorGeneral(null);
+    try {
+      // auth.service quita los espacios del teléfono antes de enviarlo (el servidor exige dígitos).
+      const resultado = await registrarCliente(formulario);
+      if (resultado.sesionIniciada) {
+        router.replace(rutaInicioPorRol(resultado.usuario.rol));
+        return;
+      }
+      // Supabase tiene activo "Confirm email": la cuenta existe, pero hay que confirmar el correo.
+      setEnviando(false);
+      Alert.alert(
+        'Cuenta creada',
+        'Revise su correo para confirmar la cuenta y luego inicie sesión.',
+        [{ text: 'Aceptar', onPress: () => router.replace('/(auth)/login') }],
+      );
+    } catch (error) {
+      setEnviando(false);
+      // Correo ya registrado: el mensaje va bajo el campo Correo.
+      if (esErrorApi(error) && error.codigo === CODIGOS_AUTH.correoRegistrado) {
+        setErrores((anteriores) => ({ ...anteriores, correo: error.mensaje }));
+        return;
+      }
+      setErrorGeneral(mensajeDeError(error));
+    }
   }
 
   return (
@@ -137,8 +180,14 @@ export default function Registro() {
             etiquetaDentro
           />
 
+          {errorGeneral ? (
+            <Text className="font-cuerpo text-base text-error" accessibilityLiveRegion="polite">
+              {errorGeneral}
+            </Text>
+          ) : null}
+
           <View className="mt-bloque">
-            <Boton texto="Crear cuenta" onPress={crearCuenta} />
+            <Boton texto="Crear cuenta" onPress={crearCuenta} cargando={enviando} />
           </View>
 
           <View className="mt-seccion flex-row items-center justify-center">
