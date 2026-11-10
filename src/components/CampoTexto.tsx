@@ -21,6 +21,7 @@ export default function CampoTexto({
   icono,
   autoCapitalize = 'sentences',
   etiquetaDentro = false,
+  multilinea = false,
 }: CampoTextoProps) {
   // Estado local: si la contraseña se ve o se oculta (botón del ojo).
   const [contrasenaVisible, setContrasenaVisible] = useState(false);
@@ -33,8 +34,8 @@ export default function CampoTexto({
       )}
 
       <View
-        className={`flex-row items-center rounded-campo border bg-fondo px-4 ${
-          etiquetaDentro ? 'min-h-16 py-2' : 'h-14'
+        className={`flex-row rounded-campo border bg-fondo px-4 ${
+          multilinea ? 'min-h-32 items-start py-3' : etiquetaDentro ? 'min-h-16 items-center py-2' : 'h-14 items-center'
         } ${hayError ? 'border-error' : 'border-borde'}`}
       >
         {icono ? (
@@ -57,8 +58,14 @@ export default function CampoTexto({
             autoCapitalize={autoCapitalize}
             autoCorrect={false}
             accessibilityLabel={etiqueta}
+            multiline={multilinea}
+            // En varias líneas el texto empieza arriba (en Android se centraría).
+            textAlignVertical={multilinea ? 'top' : 'center'}
+            numberOfLines={multilinea ? 4 : undefined}
             // Sin el relleno por defecto de Android, para que el texto quede alineado con la etiqueta.
-            className={`font-cuerpo text-base text-texto ${etiquetaDentro ? 'p-0' : ''}`}
+            className={`font-cuerpo text-base text-texto ${etiquetaDentro || multilinea ? 'p-0' : ''} ${
+              multilinea ? 'min-h-24' : ''
+            }`}
           />
         </View>
 
