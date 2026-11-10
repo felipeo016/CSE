@@ -1,10 +1,11 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { listarProductos, obtenerProducto } from '../services/productos.service';
 import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
 import type { ProductoSegunRol } from '../models/Producto';
 import type { ErrorApi } from '../types/api.types';
+import { conAvisoDeConexion, debeReintentar, type ConsultaConConexion } from '../utils/consultas';
 
 /**
  * Tiempos de caché de productos (RNF-03):
@@ -18,40 +19,11 @@ import type { ErrorApi } from '../types/api.types';
 const STALE_TIME_PRODUCTOS_MS = 5 * 60 * 1000;
 const GC_TIME_PRODUCTOS_MS = 30 * 60 * 1000;
 
-/** Máximo de reintentos automáticos antes de mostrar el error con el botón Reintentar. */
-const MAX_REINTENTOS = 2;
-
-/**
- * Solo se reintenta lo que puede arreglarse solo (servidor ocupado o red inestable).
- * Un "Acceso no autorizado" o una sesión vencida no mejoran repitiendo la petición.
- */
-function debeReintentar(fallos: number, error: ErrorApi): boolean {
-  return fallos < MAX_REINTENTOS && (error.tipo === 'servidor' || error.tipo === 'sin_conexion');
-}
-
 /**
  * Resultado de las consultas de productos: el de TanStack Query más dos banderas para el aviso
- * de conexión (RF-05, RNF-08).
+ * de conexión (RF-05, RNF-08). Las ayudas comunes (reintentos y aviso) están en utils/consultas.ts.
  */
-export type ConsultaProductos<T> = UseQueryResult<T, ErrorApi> & {
-  /** true si no hay conexión (el teléfono no tiene red o el servidor no respondió). */
-  sinConexion: boolean;
-  /** true si se están mostrando datos guardados porque no se pudieron actualizar. */
-  mostrandoCache: boolean;
-};
-
-/** Agrega las banderas de conexión a una consulta. */
-function conAvisoDeConexion<T>(
-  consulta: UseQueryResult<T, ErrorApi>,
-  enLinea: boolean,
-): ConsultaProductos<T> {
-  const sinConexion = !enLinea || consulta.error?.tipo === 'sin_conexion';
-  return {
-    ...consulta,
-    sinConexion,
-    mostrandoCache: sinConexion && consulta.data !== undefined,
-  };
-}
+export type ConsultaProductos<T> = ConsultaConConexion<T>;
 
 /** queryKey del listado: uno por rol, porque el cliente y el personal reciben datos distintos. */
 export function claveProductos(rol: string | undefined) {

@@ -196,3 +196,162 @@ export interface ParametrosNegocioApi {
   vigencia_dias: number;
   actualizado_en: string;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Clientes (RF-33)
+// ---------------------------------------------------------------------------------------------
+
+/** Fila de la tabla clientes (GET, POST y PATCH /rest/v1/clientes). */
+export interface ClienteApi {
+  id: string;
+  nombre: string;
+  /** Solo dígitos (7 a 15) o null. */
+  telefono: string | null;
+  correo: string | null;
+  tipo: TipoClienteApi;
+  /** Cuenta de la app asociada; null si el trabajador lo creó sin cuenta. */
+  usuario_id: string | null;
+  creado_en: string;
+  actualizado_en: string;
+}
+
+/** Cuerpo de POST y PATCH /rest/v1/clientes. usuario_id no se envía: lo protege el servidor. */
+export interface ClienteCuerpoApi {
+  nombre: string;
+  telefono: string | null;
+  correo: string | null;
+  tipo: TipoClienteApi;
+}
+
+/** Datos del cliente que vienen dentro de una cotización (select=...,cliente:clientes(...)). */
+export interface ClienteResumenApi {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  tipo: TipoClienteApi;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cotizaciones (RF-15 a RF-22)
+// ---------------------------------------------------------------------------------------------
+
+/** Estados guardados en la tabla cotizaciones (sección 5). */
+export type EstadoCotizacionApi =
+  | 'solicitada'
+  | 'borrador'
+  | 'nueva'
+  | 'vista'
+  | 'aceptada'
+  | 'rechazada'
+  | 'vencida';
+
+/** Tipo de servicio de una cotización, un pedido o una cita. */
+export type TipoServicioApi = 'instalacion' | 'mantenimiento';
+
+/** Línea de cotización (tabla cotizacion_lineas). Copia nombre, código y precio; nunca el costo. */
+export interface CotizacionLineaApi {
+  id: string;
+  producto_id: string;
+  codigo_producto: string | null;
+  nombre_producto: string;
+  precio_unitario: number;
+  cantidad: number;
+  subtotal: number;
+}
+
+/** Producto de interés de una solicitud (tabla cotizacion_productos_interes). */
+export interface CotizacionProductoInteresApi {
+  id: string;
+  producto_id: string;
+  nombre_producto: string;
+  cantidad: number | null;
+}
+
+/**
+ * Columnas de la tabla cotizaciones que la app pide (las mismas para cliente y personal).
+ * costo_servicio es la tarifa de instalación o mantenimiento que paga el cliente, no el costo de
+ * un producto: el cliente nunca recibe costo ni ganancia (RNF-06).
+ */
+export interface CotizacionFilaApi {
+  id: string;
+  numero: string;
+  tipo_servicio: TipoServicioApi;
+  descripcion_necesidad: string | null;
+  estado: EstadoCotizacionApi;
+  descuento: number;
+  incluye_servicio: boolean;
+  costo_servicio: number;
+  subtotal: number;
+  impuesto: number;
+  total: number;
+  /** Se fija al enviar: fecha de envío + vigencia. null mientras está en preparación. */
+  vence_en: string | null;
+  enviada_en: string | null;
+  vista_en: string | null;
+  respondida_en: string | null;
+  creado_en: string;
+}
+
+/**
+ * Cotización con sus líneas y productos de interés, como la recibe el cliente.
+ * estado_actual es la columna calculada del servidor (vencida si ya pasó vence_en).
+ */
+export interface CotizacionClienteApi extends CotizacionFilaApi {
+  estado_actual: EstadoCotizacionApi;
+  cotizacion_lineas: CotizacionLineaApi[];
+  cotizacion_productos_interes: CotizacionProductoInteresApi[];
+}
+
+/** Cotización como la recibe el personal: agrega el cliente al que pertenece. */
+export interface CotizacionPersonalApi extends CotizacionClienteApi {
+  cliente_id: string;
+  cliente: ClienteResumenApi | null;
+}
+
+/** Cuerpo de POST /rest/v1/rpc/crear_solicitud_cotizacion (RF-15). */
+export interface SolicitudCotizacionCuerpoApi {
+  tipo_servicio: TipoServicioApi;
+  descripcion: string;
+  productos_interes: { producto_id: string; cantidad?: number }[];
+}
+
+/** Cuerpo de POST y PATCH /rest/v1/cotizaciones del personal (borrador, RF-16 y RF-17). */
+export interface CotizacionBorradorCuerpoApi {
+  cliente_id: string;
+  tipo_servicio: TipoServicioApi;
+  descripcion_necesidad: string | null;
+  estado: 'borrador';
+  descuento: number;
+  incluye_servicio: boolean;
+  /** null: el servidor pone la tarifa de parametros_negocio. */
+  costo_servicio: number | null;
+}
+
+/** Cuerpo de cada línea al guardar un borrador (el servidor copia nombre, código y precio). */
+export interface CotizacionLineaCuerpoApi {
+  cotizacion_id: string;
+  producto_id: string;
+  cantidad: number;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pedidos (solo lo que devuelve aceptar_cotizacion; el resto lo completa J6)
+// ---------------------------------------------------------------------------------------------
+
+/** Fila de la tabla pedidos que devuelve la RPC aceptar_cotizacion (RF-22). */
+export interface PedidoApi {
+  id: string;
+  numero: string;
+  cliente_id: string;
+  origen: 'carrito' | 'cotizacion';
+  cotizacion_id: string | null;
+  subtotal: number;
+  descuento: number;
+  impuesto: number;
+  incluye_servicio: boolean;
+  tipo_servicio: TipoServicioApi | null;
+  costo_servicio: number;
+  total: number;
+  estado: 'pendiente';
+  creado_en: string;
+}
