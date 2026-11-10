@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import Boton from '../../src/components/Boton';
 import CampoTexto from '../../src/components/CampoTexto';
+import { iniciarSesion as iniciarSesionServidor } from '../../src/services/auth.service';
+import { MENSAJE_SESION_EXPIRADA, mensajeDeError } from '../../src/services/api';
+import { rutaInicioPorRol } from '../../src/utils/navegacion';
 import { correoValido, primerError, requerido } from '../../src/utils/validaciones';
 
 /** Valores del formulario de inicio de sesión (RF-01). */
@@ -18,19 +21,32 @@ type ErroresLogin = Record<keyof FormularioLogin, string | null>;
 
 const SIN_ERRORES: ErroresLogin = { correo: null, contrasena: null };
 
-/** Iniciar sesión (RF-01): correo y contraseña con validación al enviar. */
+/** Iniciar sesión (RF-01): correo y contraseña con validación al enviar y conexión a Supabase Auth. */
 export default function Login() {
   const router = useRouter();
   const [formulario, setFormulario] = useState<FormularioLogin>({ correo: '', contrasena: '' });
   const [errores, setErrores] = useState<ErroresLogin>(SIN_ERRORES);
+  // Error que no es de un campo: credenciales incorrectas, sin conexión, cuenta desactivada...
+  const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  // api.ts abre esta pantalla con ?aviso=sesion_expirada cuando el token venció (RF-04).
+  const { aviso } = useLocalSearchParams<{ aviso?: string }>();
+  const [mostrarAviso, setMostrarAviso] = useState(aviso === 'sesion_expirada');
 
   // Actualiza un campo y borra su error para que el mensaje desaparezca al corregirlo.
   function cambiarCampo(campo: keyof FormularioLogin, valor: string) {
     setFormulario((anterior) => ({ ...anterior, [campo]: valor }));
     setErrores((anteriores) => ({ ...anteriores, [campo]: null }));
+    setErrorGeneral(null);
   }
 
-  function iniciarSesion() {
+  async function iniciarSesion() {
+    // Evita el doble envío mientras espera la respuesta.
+    if (enviando) {
+      return;
+    }
+
     const nuevosErrores: ErroresLogin = {
       correo: primerError(
         requerido(formulario.correo, 'su correo electrónico'),
@@ -40,14 +56,23 @@ export default function Login() {
     };
     setErrores(nuevosErrores);
 
-    // Con algún campo inválido no se avanza (y en F3 no se enviará la petición).
+    // Con algún campo inválido no se envía la petición.
     if (nuevosErrores.correo || nuevosErrores.contrasena) {
       return;
     }
 
-    // TEMPORAL hasta F3: aquí F3 enviará las credenciales a Supabase Auth y abrirá las pestañas
-    // del rol que devuelva el servidor. Por ahora todo envío válido lleva a las pestañas del cliente.
-    router.replace('/(cliente)/(tabs)/inicio');
+    setEnviando(true);
+    setErrorGeneral(null);
+    setMostrarAviso(false);
+    try {
+      // Supabase Auth valida las credenciales y auth.service guarda la sesión con el rol del perfil.
+      const usuario = await iniciarSesionServidor(formulario.correo, formulario.contrasena);
+      router.replace(rutaInicioPorRol(usuario.rol));
+    } catch (error) {
+      // El mensaje ya viene en español desde api.ts: no dice si falló el correo o la contraseña.
+      setErrorGeneral(mensajeDeError(error));
+      setEnviando(false);
+    }
   }
 
   return (
@@ -73,6 +98,12 @@ export default function Login() {
             Inicia sesión para continuar
           </Text>
 
+          {mostrarAviso ? (
+            <Text className="mb-bloque font-cuerpo-semi text-base text-advertencia">
+              {MENSAJE_SESION_EXPIRADA}
+            </Text>
+          ) : null}
+
           <CampoTexto
             etiqueta="Correo electrónico"
             valor={formulario.correo}
@@ -95,8 +126,14 @@ export default function Login() {
             icono="lock"
           />
 
+          {errorGeneral ? (
+            <Text className="font-cuerpo text-base text-error" accessibilityLiveRegion="polite">
+              {errorGeneral}
+            </Text>
+          ) : null}
+
           <View className="mt-seccion">
-            <Boton texto="Iniciar sesión" onPress={iniciarSesion} />
+            <Boton texto="Iniciar sesión" onPress={iniciarSesion} cargando={enviando} />
           </View>
 
           <Pressable

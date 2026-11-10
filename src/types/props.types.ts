@@ -2,6 +2,8 @@ import type { ComponentProps } from 'react';
 import type { KeyboardTypeOptions } from 'react-native';
 import type { Feather } from '@expo/vector-icons';
 
+import type { Usuario } from '../models/Usuario';
+
 /** Nombre de un ícono del set Feather (@expo/vector-icons), el estilo de íconos del mockup. */
 export type NombreIcono = ComponentProps<typeof Feather>['name'];
 
@@ -67,4 +69,15 @@ export interface PantallaEnConstruccionProps {
   titulo: string;
   /** ID del prompt que completará la pantalla, por ejemplo 'J3'. */
   prompt: string;
+}
+
+/** Formulario de Perfil: recibe los datos de la cuenta ya cargados del servidor. */
+export interface FormularioPerfilProps {
+  usuario: Usuario;
+}
+
+/** Botón TEMPORAL hasta J2 que abre el Perfil desde las pestañas. */
+export interface AccesoPerfilTemporalProps {
+  /** Ruta del Perfil del rol, por ejemplo '/(cliente)/perfil'. */
+  ruta: '/(cliente)/perfil' | '/(trabajador)/perfil';
 }
