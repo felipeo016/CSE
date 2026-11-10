@@ -29,7 +29,7 @@ export default function PantallaAccesoNoAutorizado() {
           Acceso no autorizado
         </Text>
         <Text className="mt-2 text-center font-cuerpo text-base text-texto-suave">
-          Su cuenta no tiene permiso para abrir esta pantalla.
+          Tu cuenta no tiene permiso para abrir esta pantalla.
         </Text>
         <View className="mt-seccion w-full max-w-xs">
           <Boton texto="Ir al inicio" onPress={irAlInicio} icono="home" />

@@ -16,7 +16,7 @@ import type { DatosPerfilEditables, DatosRegistro, Usuario } from '../models/Usu
  * Cuando el servidor responde bien, guardan el resultado en el sesionStore.
  */
 
-const MENSAJE_CUENTA_DESACTIVADA = 'Su cuenta está desactivada. Comuníquese con el negocio.';
+const MENSAJE_CUENTA_DESACTIVADA = 'Tu cuenta está desactivada. Comunícate con el negocio.';
 
 /** Quita los espacios del teléfono: el formulario acepta "300 123 4567" y el servidor exige dígitos. */
 function soloDigitos(telefono: string): string {

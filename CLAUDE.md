@@ -35,7 +35,8 @@ Prioridad ante conflicto:
   Axios. NO instalar `@supabase/supabase-js`: Axios es lo que se evalúa.
 - Mapa: OpenStreetMap + Leaflet dentro de react-native-webview; ubicación con expo-location (solo primer plano).
 - También permitidas: @react-native-community/netinfo, @react-native-community/datetimepicker,
-  expo-splash-screen, @expo/vector-icons (set Feather). Cualquier otra librería: pregunta antes.
+  expo-splash-screen, @expo/vector-icons (set Feather), react-native-gesture-handler (lo exige el
+  Drawer). Cualquier otra librería: pregunta antes.
 
 ## Estructura
 
@@ -67,6 +68,7 @@ Si Expo Router o una pantalla obliga a cambiar la estructura, haz el cambio mín
   "Solo hay N unidades disponibles", "Agotado", "Producto no encontrado", "Cotización no encontrada",
   "Ingrese un valor numérico", "Active la ubicación del dispositivo", "Acceso no autorizado",
   "Pago simulado".
+- Los textos de la app tratan al usuario de tú, como el mockup; los textos que la documentación cita literalmente se usan tal cual.
 - Código simple y legible para estudiantes, con comentarios breves en español donde la lógica no sea
   obvia. Mejor claro que ingenioso.
 - Alcance: haz solo lo que pide el prompt actual. Si necesitas algo de otro prompt que aún no existe,

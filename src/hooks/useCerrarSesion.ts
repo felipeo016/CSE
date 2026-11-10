@@ -14,7 +14,7 @@ export function useCerrarSesion() {
   const [cerrando, setCerrando] = useState(false);
 
   function confirmarCierre() {
-    Alert.alert('Cerrar sesión', '¿Desea cerrar sesión en este dispositivo?', [
+    Alert.alert('Cerrar sesión', '¿Quieres cerrar sesión en este dispositivo?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Cerrar sesión',

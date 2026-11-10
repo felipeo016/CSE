@@ -28,7 +28,7 @@ type ErroresCliente = Record<'nombre' | 'telefono' | 'correo', string | null>;
 
 const SIN_ERRORES: ErroresCliente = { nombre: null, telefono: null, correo: null };
 
-const MENSAJE_SIN_CONEXION = 'Sin conexión. El cliente no se guardó. Revise su conexión e intente de nuevo.';
+const MENSAJE_SIN_CONEXION = 'Sin conexión. El cliente no se guardó. Revisa tu conexión e intenta de nuevo.';
 
 /**
  * Formulario de cliente (RF-33). Sin parámetro crea un cliente; con ?id= edita ese cliente.
