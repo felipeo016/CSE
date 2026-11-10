@@ -49,10 +49,10 @@ export default function Login() {
 
     const nuevosErrores: ErroresLogin = {
       correo: primerError(
-        requerido(formulario.correo, 'su correo electrónico'),
+        requerido(formulario.correo, 'tu correo electrónico'),
         correoValido(formulario.correo),
       ),
-      contrasena: requerido(formulario.contrasena, 'su contraseña'),
+      contrasena: requerido(formulario.contrasena, 'tu contraseña'),
     };
     setErrores(nuevosErrores);
 

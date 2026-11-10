@@ -279,7 +279,7 @@ export interface FilaResumenProps {
   variante?: 'normal' | 'descuento' | 'total';
 }
 
-/** Una línea del carrito con su contador y el botón Quitar. */
+/** Una línea del carrito con su contador y el botón Eliminar. */
 export interface LineaCarritoItemProps {
   linea: LineaCarrito;
 }

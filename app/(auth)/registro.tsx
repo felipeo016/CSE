@@ -62,13 +62,13 @@ export default function Registro() {
     }
 
     const nuevosErrores: ErroresRegistro = {
-      nombre: requerido(formulario.nombre, 'su nombre'),
+      nombre: requerido(formulario.nombre, 'tu nombre'),
       correo: primerError(
-        requerido(formulario.correo, 'su correo electrónico'),
+        requerido(formulario.correo, 'tu correo electrónico'),
         correoValido(formulario.correo),
       ),
       telefono: primerError(
-        requerido(formulario.telefono, 'su teléfono'),
+        requerido(formulario.telefono, 'tu teléfono'),
         telefonoValido(formulario.telefono),
       ),
       contrasena: primerError(
@@ -97,7 +97,7 @@ export default function Registro() {
       setEnviando(false);
       Alert.alert(
         'Cuenta creada',
-        'Revise su correo para confirmar la cuenta y luego inicie sesión.',
+        'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
         [{ text: 'Aceptar', onPress: () => router.replace('/(auth)/login') }],
       );
     } catch (error) {

@@ -33,7 +33,7 @@ if (!URL_SUPABASE || !LLAVE_PUBLICA) {
 const TIEMPO_ESPERA_MS = 15000;
 
 /** Mensaje de RF-04 cuando el token vence y no se pudo renovar. */
-export const MENSAJE_SESION_EXPIRADA = 'Su sesión expiró, inicie sesión de nuevo';
+export const MENSAJE_SESION_EXPIRADA = 'Tu sesión expiró, inicia sesión de nuevo';
 
 export const api = axios.create({
   baseURL: URL_SUPABASE,
@@ -133,9 +133,9 @@ api.interceptors.response.use(
 // Conversión de errores
 // ---------------------------------------------------------------------------------------------
 
-const MENSAJE_ERROR_GENERAL = 'No se pudo completar la operación. Intente de nuevo.';
+const MENSAJE_ERROR_GENERAL = 'No se pudo completar la operación. Intenta de nuevo.';
 const MENSAJE_SIN_CONEXION =
-  'No hay conexión con el servidor. Revise su conexión a internet e intente de nuevo.';
+  'No hay conexión con el servidor. Revisa tu conexión a internet e intenta de nuevo.';
 const MENSAJE_NO_AUTORIZADO = 'Acceso no autorizado';
 
 /** Códigos fijos de Supabase Auth que la app reconoce (error_code). */
@@ -153,27 +153,27 @@ const ERRORES_AUTH: Record<string, { tipo: ErrorApi['tipo']; mensaje: string }> 
   email_exists: { tipo: 'conflicto', mensaje: 'Este correo ya está registrado' },
   email_not_confirmed: {
     tipo: 'validacion',
-    mensaje: 'Debe confirmar su correo antes de iniciar sesión. Revise su bandeja de entrada.',
+    mensaje: 'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.',
   },
   user_banned: {
     tipo: 'no_autorizado',
-    mensaje: 'Su cuenta está desactivada. Comuníquese con el negocio.',
+    mensaje: 'Tu cuenta está desactivada. Comunícate con el negocio.',
   },
   weak_password: {
     tipo: 'validacion',
-    mensaje: 'La contraseña es muy débil. Use una contraseña más larga o con más variedad.',
+    mensaje: 'La contraseña es muy débil. Usa una contraseña más larga o con más variedad.',
   },
   email_address_invalid: {
     tipo: 'validacion',
-    mensaje: 'Ingrese un correo con el formato nombre@dominio.com',
+    mensaje: 'Ingresa un correo con el formato nombre@dominio.com',
   },
   over_request_rate_limit: {
     tipo: 'conflicto',
-    mensaje: 'Demasiados intentos. Espere un momento e intente de nuevo.',
+    mensaje: 'Demasiados intentos. Espera un momento e intenta de nuevo.',
   },
   over_email_send_rate_limit: {
     tipo: 'conflicto',
-    mensaje: 'Demasiados intentos. Espere un momento e intente de nuevo.',
+    mensaje: 'Demasiados intentos. Espera un momento e intenta de nuevo.',
   },
 };
 
@@ -253,7 +253,7 @@ function convertirError(error: AxiosError): ErrorApi {
       return crearError('no_autorizado', MENSAJE_NO_AUTORIZADO, cuerpo.code);
     }
     if (cuerpo.code === '23514' || cuerpo.code === '22P02') {
-      return crearError('validacion', 'Revise los datos ingresados', cuerpo.code);
+      return crearError('validacion', 'Revisa los datos ingresados', cuerpo.code);
     }
   }
 
@@ -286,7 +286,7 @@ function convertirError(error: AxiosError): ErrorApi {
     return crearError('conflicto', 'Ya existe un registro con esos datos');
   }
   if (estado >= 500) {
-    return crearError('servidor', 'El servidor no pudo procesar la solicitud. Intente más tarde.');
+    return crearError('servidor', 'El servidor no pudo procesar la solicitud. Intenta más tarde.');
   }
   return crearError('validacion', MENSAJE_ERROR_GENERAL);
 }

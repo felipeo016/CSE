@@ -81,7 +81,7 @@ export default function SelectorProductosInteres({ elegidos, onCambiar }: Select
         ) : productos.isError && productos.data === undefined ? (
           <View className="flex-row items-center py-2">
             <Text className="flex-1 font-cuerpo text-sm text-error">
-              No se pudo cargar el catálogo. Puede enviar la solicitud sin productos.
+              No se pudo cargar el catálogo. Puedes enviar la solicitud sin productos.
             </Text>
             <Pressable onPress={() => productos.refetch()} accessibilityRole="button" hitSlop={8}>
               <Text className="ml-2 font-cuerpo-semi text-sm text-primario">Reintentar</Text>
@@ -89,7 +89,7 @@ export default function SelectorProductosInteres({ elegidos, onCambiar }: Select
           </View>
         ) : busqueda.trim() === '' ? (
           <Text className="py-2 font-cuerpo text-sm text-texto-suave">
-            Escriba para buscar en el catálogo.
+            Escribe para buscar en el catálogo.
           </Text>
         ) : resultados.length === 0 ? (
           <Text className="py-2 font-cuerpo text-sm text-texto-suave">

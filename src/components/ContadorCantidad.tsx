@@ -31,8 +31,11 @@ export default function ContadorCantidad({
     setTexto(String(valor));
   }, [valor]);
 
-  const enMinimo = valor <= minimo;
-  const enMaximo = valor >= maximo;
+  // Sin unidades para elegir (por ejemplo, todo el inventario ya está en el carrito): el contador
+  // queda bloqueado y no muestra mensajes; la pantalla explica el motivo.
+  const sinUnidades = maximo < minimo;
+  const enMinimo = sinUnidades || valor <= minimo;
+  const enMaximo = sinUnidades || valor >= maximo;
 
   function cambiarCon(nueva: number) {
     setError(null);
@@ -52,10 +55,11 @@ export default function ContadorCantidad({
   // Al salir de la caja, si quedó algo inválido, vuelve a mostrar la última cantidad válida.
   function alSalir() {
     setTexto(String(valor));
+    setError(null); // la cantidad mostrada vuelve a ser válida: el mensaje ya no aplica
   }
 
   // El aviso del límite se muestra cuando no hay otro error (RF-10).
-  const mensaje = error ?? (enMaximo ? mensajeInventario(maximo) : null);
+  const mensaje = sinUnidades ? null : (error ?? (enMaximo ? mensajeInventario(maximo) : null));
 
   return (
     <View>
@@ -79,6 +83,7 @@ export default function ContadorCantidad({
           onChangeText={alEscribir}
           onBlur={alSalir}
           keyboardType="number-pad"
+          editable={!sinUnidades}
           selectTextOnFocus
           maxLength={4}
           accessibilityLabel={etiquetaAccesible}

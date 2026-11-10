@@ -29,7 +29,7 @@ const OPCIONES_SERVICIO = [
 ] as const;
 
 const MENSAJE_SIN_CONEXION =
-  'Sin conexión. Su solicitud no se envió. Revise su conexión e intente de nuevo.';
+  'Sin conexión. Tu solicitud no se envió. Revisa tu conexión e intenta de nuevo.';
 
 interface ErroresSolicitud {
   tipoServicio: string | null;
@@ -79,8 +79,8 @@ function FormularioSolicitud() {
 
     // Mensaje por campo (RF-15).
     const nuevos: ErroresSolicitud = {
-      tipoServicio: tipoServicio === null ? 'Elija el tipo de servicio' : null,
-      descripcion: requerido(descripcion, 'la descripción de su necesidad'),
+      tipoServicio: tipoServicio === null ? 'Elige el tipo de servicio' : null,
+      descripcion: requerido(descripcion, 'la descripción de tu necesidad'),
     };
     setErrores(nuevos);
     if (nuevos.tipoServicio || nuevos.descripcion || tipoServicio === null) {
@@ -163,8 +163,8 @@ function ConfirmacionSolicitud({ solicitud }: ConfirmacionSolicitudProps) {
       <Feather name="check-circle" size={64} color={COLORES.exito} />
       <Text className="mt-5 text-center font-titulo text-2xl text-texto">Solicitud enviada</Text>
       <Text className="mt-2 text-center font-cuerpo text-base text-texto-suave">
-        Su solicitud {solicitud.numero} quedó en estado {NOMBRE_ESTADO_COTIZACION[solicitud.estado]}.
-        Un trabajador la revisará y le enviará la cotización a su bandeja.
+        Tu solicitud {solicitud.numero} quedó en estado {NOMBRE_ESTADO_COTIZACION[solicitud.estado]}.
+        Un trabajador la revisará y te enviará la cotización a tu bandeja.
       </Text>
       <View className="mt-seccion w-full max-w-xs">
         <Boton texto="Volver a Cotizaciones" onPress={() => router.back()} />

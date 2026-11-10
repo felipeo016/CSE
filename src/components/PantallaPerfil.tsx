@@ -33,11 +33,11 @@ export default function PantallaPerfil() {
   return (
     <SafeAreaView className="flex-1 bg-fondo">
       {consulta.isPending ? (
-        <EstadoVista tipo="carga" mensaje="Cargando su perfil…" />
+        <EstadoVista tipo="carga" mensaje="Cargando tu perfil…" />
       ) : consulta.isError ? (
         <EstadoVista
           tipo="error"
-          mensaje="No se pudo cargar su perfil"
+          mensaje="No se pudo cargar tu perfil"
           detalle={consulta.error.mensaje}
           accion={{ texto: 'Reintentar', onPress: () => consulta.refetch() }}
         />
@@ -76,9 +76,9 @@ function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
 
   function guardarCambios() {
     const nuevosErrores: ErroresPerfil = {
-      nombre: requerido(formulario.nombre, 'su nombre'),
+      nombre: requerido(formulario.nombre, 'tu nombre'),
       telefono: primerError(
-        requerido(formulario.telefono, 'su teléfono'),
+        requerido(formulario.telefono, 'tu teléfono'),
         telefonoValido(formulario.telefono),
       ),
     };
@@ -128,7 +128,7 @@ function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
 
         {/* Solo se confirma cuando el servidor respondió bien (RNF-08). */}
         {guardar.isSuccess ? (
-          <Text className="font-cuerpo-semi text-base text-exito">Sus datos se guardaron</Text>
+          <Text className="font-cuerpo-semi text-base text-exito">Tus datos se guardaron</Text>
         ) : null}
         {guardar.isError ? (
           <Text className="font-cuerpo text-base text-error" accessibilityLiveRegion="polite">

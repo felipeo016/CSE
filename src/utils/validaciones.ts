@@ -18,17 +18,17 @@ const FORMATO_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * El campo no puede quedar vacío (los espacios solos cuentan como vacío).
- * @param campo cómo se nombra el campo en el mensaje, por ejemplo "su correo electrónico".
+ * @param campo cómo se nombra el campo en el mensaje, por ejemplo "tu correo electrónico".
  */
 export function requerido(valor: string, campo: string): ResultadoValidacion {
-  return valor.trim() === '' ? `Ingrese ${campo}` : null;
+  return valor.trim() === '' ? `Ingresa ${campo}` : null;
 }
 
 /** Correo con formato nombre@dominio.com. Indica el formato esperado si no lo cumple. */
 export function correoValido(valor: string): ResultadoValidacion {
   return FORMATO_CORREO.test(valor.trim())
     ? null
-    : 'Ingrese un correo con el formato nombre@dominio.com';
+    : 'Ingresa un correo con el formato nombre@dominio.com';
 }
 
 /** Teléfono solo con números (se permiten espacios para separar) y de 7 a 15 dígitos. */
@@ -56,7 +56,7 @@ export function numeroEntero(valor: string): ResultadoValidacion {
   if (texto === '' || Number.isNaN(Number(texto))) {
     return 'Ingrese un valor numérico';
   }
-  return Number.isInteger(Number(texto)) ? null : 'Ingrese un número entero, sin decimales';
+  return Number.isInteger(Number(texto)) ? null : 'Ingresa un número entero, sin decimales';
 }
 
 /** Número mayor o igual que cero (por ejemplo, un precio o un inventario). */
@@ -79,12 +79,13 @@ export function mensajeInventario(disponibles: number): string {
  */
 export function cantidadValida(valor: string, disponibles: number): ResultadoValidacion {
   const texto = valor.trim();
-  // Solo dígitos (con un "-" opcional para poder dar el mensaje de mínimo). Así "1e2" o "2,5" no pasan.
+  // Dígitos con un "-" opcional (para dar el mensaje de mínimo) y, si acaso, una parte decimal con
+  // punto o coma. "1e2" o "abc" no pasan; "2,5" o "1.5" sí pasan y abajo reciben el mensaje de decimales.
   if (!/^-?\d+([.,]\d+)?$/.test(texto)) {
     return 'Ingrese un valor numérico';
   }
   if (/[.,]/.test(texto)) {
-    return 'Ingrese un número entero, sin decimales';
+    return 'Ingresa un número entero, sin decimales';
   }
   const cantidad = Number(texto);
   if (cantidad < 1) {
@@ -95,7 +96,7 @@ export function cantidadValida(valor: string, disponibles: number): ResultadoVal
 
 /**
  * Devuelve el primer error de una lista de validaciones, o null si todas pasan.
- * Ejemplo: primerError(requerido(correo, 'su correo electrónico'), correoValido(correo)).
+ * Ejemplo: primerError(requerido(correo, 'tu correo electrónico'), correoValido(correo)).
  */
 export function primerError(...resultados: ResultadoValidacion[]): ResultadoValidacion {
   return resultados.find((resultado) => resultado !== null) ?? null;

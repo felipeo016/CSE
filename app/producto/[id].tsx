@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -32,6 +32,7 @@ import type {
   PreciosPersonalProps,
 } from '../../src/types/props.types';
 import { lineaDesdeProducto } from '../../src/utils/carrito';
+import { mensajeInventario } from '../../src/utils/validaciones';
 import { formatearPrecio } from '../../src/utils/formato';
 import { ROLES_TODOS, rutaInicioPorRol } from '../../src/utils/navegacion';
 
@@ -197,6 +198,8 @@ function FilaPrecio({ etiqueta, valor }: FilaResumenProps) {
 /** Cantidad, Agregar al carrito y Solicitar cotización (mockup del detalle). */
 function CompraCliente({ producto }: CompraClienteProps) {
   const agregar = useCarritoStore((estado) => estado.agregar);
+  // Selector de Zustand: unidades de este producto que ya están en el carrito. Cambia apenas se
+  // agrega, y con él el máximo del contador.
   const enCarrito = useCarritoStore(
     (estado) => estado.lineas.find((linea) => linea.productoId === producto.id)?.cantidad ?? 0,
   );
@@ -205,6 +208,17 @@ function CompraCliente({ producto }: CompraClienteProps) {
 
   const agotado = producto.inventario <= 0;
   const sinPrecio = producto.precio === null;
+  // Lo que todavía se puede agregar: el inventario menos lo que ya está en el carrito
+  // (agregar() suma a la cantidad que ya hay, así nunca se pasa del inventario).
+  const maximo = Math.max(producto.inventario - enCarrito, 0);
+  const todoEnCarrito = !agotado && maximo === 0;
+
+  // Si el máximo baja (por ejemplo, después de agregar), el contador no puede quedar por encima.
+  useEffect(() => {
+    if (maximo >= 1 && cantidad > maximo) {
+      setCantidad(maximo);
+    }
+  }, [maximo, cantidad]);
 
   function agregarAlCarrito() {
     const linea = lineaDesdeProducto(producto, cantidad);
@@ -225,26 +239,32 @@ function CompraCliente({ producto }: CompraClienteProps) {
 
   return (
     <View className="mt-seccion">
-      {agotado ? null : (
+      {agotado || todoEnCarrito ? null : (
         <View className="mb-bloque flex-row items-start justify-between rounded-tarjeta border border-borde p-4">
           <Text className="mt-2 font-titulo-semi text-lg text-texto">Cantidad</Text>
           <ContadorCantidad
             valor={cantidad}
-            maximo={producto.inventario}
+            maximo={maximo}
             onCambiar={setCantidad}
             etiquetaAccesible={`Cantidad de ${producto.nombre}`}
           />
         </View>
       )}
 
+      {todoEnCarrito ? (
+        // Todo el inventario ya está en el carrito: no se puede agregar más (RF-10).
+        <Text className="mb-2 font-cuerpo-semi text-sm text-error" accessibilityLiveRegion="polite">
+          {mensajeInventario(producto.inventario)}
+        </Text>
+      ) : null}
       {enCarrito > 0 ? (
         <Text className="mb-2 font-cuerpo text-sm text-texto-suave">
-          Ya tiene {enCarrito} {enCarrito === 1 ? 'unidad' : 'unidades'} en el carrito.
+          Ya tienes {enCarrito} {enCarrito === 1 ? 'unidad' : 'unidades'} en el carrito.
         </Text>
       ) : null}
       {sinPrecio ? (
         <Text className="mb-2 font-cuerpo text-sm text-error">
-          Este producto no tiene precio registrado. Puede solicitar una cotización.
+          Este producto no tiene precio registrado. Puedes solicitar una cotización.
         </Text>
       ) : null}
 
@@ -252,7 +272,7 @@ function CompraCliente({ producto }: CompraClienteProps) {
         texto={agotado ? 'Agotado' : 'Agregar al carrito'}
         icono={agotado ? undefined : 'shopping-cart'}
         onPress={agregarAlCarrito}
-        deshabilitado={agotado || sinPrecio}
+        deshabilitado={agotado || sinPrecio || todoEnCarrito}
       />
       <View className="mt-bloque">
         <Boton
