@@ -55,9 +55,15 @@ Cada pull request hacia `main` (y cada push a `main`) corre en GitHub Actions el
 1. Que no haya un `.env` versionado ni llaves secretas (`sb_secret_…`, `service_role`) con valor.
 2. `npm ci`: que las dependencias se instalen tal como están en `package-lock.json`.
 3. `npm run typecheck`: que TypeScript no tenga errores.
-4. `npx expo-doctor`: que las versiones sean compatibles con Expo SDK 58.
+4. `npx expo-doctor`: que las versiones sean compatibles con Expo SDK 58. **Este paso no bloquea
+   el PR** (`continue-on-error: true`): Expo publica parches seguido y, cuando sale uno, los
+   paquetes quedan una versión atrás sin que el código esté mal. Si falla, el aviso sigue visible
+   en el CI; se corrige con `npx expo install --fix` en un commit aparte.
 5. `npx expo export --platform android`: que el bundle de Android compile (con valores falsos de
    Supabase, porque en GitHub no hay `.env`).
+
+La revisión de secretos, `npm ci`, el typecheck y la compilación del bundle sí son obligatorios: si
+uno falla, el PR sale en rojo.
 
 **Si un PR sale en rojo:** abre la pestaña *Checks* del PR, entra al paso con la X y lee el error.
 Repite ese mismo comando en tu computador, corrígelo y sube un commit nuevo a la misma rama: la

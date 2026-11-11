@@ -69,7 +69,11 @@ jobs:
       - name: Revisar tipos de TypeScript
         run: npm run typecheck
 
+      # Expo publica parches seguido y no deben bloquear un PR: si expo-doctor falla, el paso
+      # queda marcado con un aviso visible en el CI, pero la revisión sigue. El typecheck, la
+      # revisión de secretos y la compilación del bundle siguen siendo obligatorios.
       - name: Revisar el proyecto con expo-doctor
+        continue-on-error: true
         run: npx expo-doctor
 
       - name: Compilar el bundle de Android
