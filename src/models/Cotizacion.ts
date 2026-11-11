@@ -186,6 +186,19 @@ export interface DatosBorradorCotizacion {
   lineas: LineaBorrador[];
 }
 
+/**
+ * Respuesta del servidor al guardar un borrador o al enviarlo (F6). El total es el que calculó
+ * el servidor: la pantalla lo compara con el que mostró la app.
+ */
+export interface CotizacionGuardada {
+  id: string;
+  numero: string;
+  estado: EstadoCotizacion;
+  total: number;
+  /** null mientras es borrador; al enviar, fecha de envío + días de vigencia. */
+  venceEn: string | null;
+}
+
 /** Pedido creado al aceptar una cotización (RF-22). Se muestra en Confirmación de pedido. */
 export interface PedidoCreado {
   id: string;

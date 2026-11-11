@@ -13,6 +13,7 @@ import {
 import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
 import type {
+  CotizacionGuardada,
   CotizacionSegunRol,
   DatosBorradorCotizacion,
   DatosSolicitudCotizacion,
@@ -114,23 +115,26 @@ export function useCrearSolicitudCotizacion() {
   });
 }
 
-/** El personal guarda una cotización como borrador (RF-16, RF-17). Devuelve su id. */
+/**
+ * El personal guarda una cotización como borrador (RF-16, RF-17) con la RPC de la migración 006.
+ * Devuelve el id, el número y el total del servidor.
+ */
 export function useGuardarBorradorCotizacion() {
   const clienteQuery = useQueryClient();
-  return useMutation<string, ErrorApi, DatosBorradorCotizacion>({
+  return useMutation<CotizacionGuardada, ErrorApi, DatosBorradorCotizacion>({
     mutationFn: guardarBorradorCotizacion,
     networkMode: 'always',
-    onSuccess: (id) => invalidarCotizacion(clienteQuery, id),
+    onSuccess: (guardada) => invalidarCotizacion(clienteQuery, guardada.id),
   });
 }
 
-/** El personal envía la cotización al cliente (RF-18). Recibe el id. */
+/** El personal envía al cliente un borrador ya guardado (RF-18). Recibe el id. */
 export function useEnviarCotizacion() {
   const clienteQuery = useQueryClient();
-  return useMutation<void, ErrorApi, string>({
+  return useMutation<CotizacionGuardada, ErrorApi, string>({
     mutationFn: enviarCotizacion,
     networkMode: 'always',
-    onSuccess: (_resultado, id) => invalidarCotizacion(clienteQuery, id),
+    onSuccess: (_enviada, id) => invalidarCotizacion(clienteQuery, id),
   });
 }
 
