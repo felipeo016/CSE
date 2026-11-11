@@ -2,21 +2,22 @@ import { api } from './api';
 import { useSesionStore } from '../store/sesionStore';
 import {
   mapearCotizacionCliente,
+  mapearCotizacionGuardada,
   mapearCotizacionPersonal,
   mapearPedidoCreado,
   mapearSolicitudCreada,
 } from '../mappers/cotizacion.mapper';
 import type {
-  CotizacionBorradorCuerpoApi,
+  BorradorCotizacionCuerpoApi,
   CotizacionClienteApi,
   CotizacionFilaApi,
-  CotizacionLineaCuerpoApi,
   CotizacionPersonalApi,
   ErrorApi,
   PedidoApi,
   SolicitudCotizacionCuerpoApi,
 } from '../types/api.types';
 import type {
+  CotizacionGuardada,
   CotizacionSegunRol,
   DatosBorradorCotizacion,
   DatosSolicitudCotizacion,
@@ -35,7 +36,6 @@ import { esUuid } from '../utils/consultas';
  */
 
 const RUTA_COTIZACIONES = '/rest/v1/cotizaciones';
-const RUTA_LINEAS = '/rest/v1/cotizacion_lineas';
 const RUTA_RPC = '/rest/v1/rpc';
 
 /** Pide al servidor que devuelva la fila guardada en POST y PATCH. */
@@ -196,76 +196,50 @@ export async function crearSolicitudCotizacion(
 }
 
 /**
- * Guarda una cotización en Borrador (RF-16, RF-17; solo personal). Devuelve su id.
- * 1. Crea la cotización, o actualiza la solicitud o el borrador indicado en datos.id.
- * 2. Agrega o actualiza las líneas (upsert por cotización y producto).
- * 3. Quita las líneas que ya no están.
- * Se hace en ese orden para que, si una petición falla, el borrador no pierda líneas: queda
- * como estaba o con las nuevas, y el trabajador puede volver a guardar. Los totales los
- * recalcula el servidor después de cada cambio.
+ * Guarda una cotización en Borrador (RF-16, RF-17; solo personal) con UNA sola petición: la RPC
+ * guardar_borrador_cotizacion (migración 006) guarda la cabecera y todas las líneas en una
+ * transacción. Si algo falla (sin conexión, un producto sin precio o sin inventario...), el
+ * borrador queda como estaba en el servidor.
+ * - Sin datos.id crea un borrador nuevo; con id completa esa solicitud o ese borrador.
+ * - Devuelve el id, el número y el total que calculó el servidor.
  */
-export async function guardarBorradorCotizacion(datos: DatosBorradorCotizacion): Promise<string> {
-  const cuerpo: CotizacionBorradorCuerpoApi = {
+export async function guardarBorradorCotizacion(
+  datos: DatosBorradorCotizacion,
+): Promise<CotizacionGuardada> {
+  if (datos.id !== undefined && !esUuid(datos.id)) throw ERROR_NO_ENCONTRADA;
+
+  const cuerpo: BorradorCotizacionCuerpoApi = {
+    id: datos.id ?? null,
     cliente_id: datos.clienteId,
     tipo_servicio: datos.tipoServicio,
-    descripcion_necesidad: datos.descripcion.trim() || null,
-    estado: 'borrador',
+    descripcion: datos.descripcion.trim() || null,
     descuento: datos.descuento,
     incluye_servicio: datos.incluyeServicio,
     costo_servicio: datos.incluyeServicio ? datos.valorServicio : 0,
+    lineas: datos.lineas.map((linea) => ({ producto_id: linea.productoId, cantidad: linea.cantidad })),
   };
-
-  let id = datos.id;
-  if (id) {
-    if (!esUuid(id)) throw ERROR_NO_ENCONTRADA;
-    const respuesta = await api.patch<CotizacionFilaApi[]>(RUTA_COTIZACIONES, cuerpo, {
-      params: { id: `eq.${id}` },
-      headers: DEVOLVER_FILA,
-    });
-    if (respuesta.data.length === 0) throw ERROR_NO_ENCONTRADA;
-  } else {
-    const respuesta = await api.post<CotizacionFilaApi[]>(RUTA_COTIZACIONES, cuerpo, {
-      headers: DEVOLVER_FILA,
-    });
-    id = respuesta.data[0].id;
-  }
-
-  if (datos.lineas.length > 0) {
-    const lineas: CotizacionLineaCuerpoApi[] = datos.lineas.map((linea) => ({
-      cotizacion_id: id,
-      producto_id: linea.productoId,
-      cantidad: linea.cantidad,
-    }));
-    await api.post(RUTA_LINEAS, lineas, {
-      params: { on_conflict: 'cotizacion_id,producto_id' },
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    });
-  }
-
-  // Quitar las líneas de productos que el trabajador sacó de la cotización.
-  const productosQueQuedan = datos.lineas.map((linea) => linea.productoId).filter(esUuid);
-  await api.delete(RUTA_LINEAS, {
-    params:
-      productosQueQuedan.length > 0
-        ? { cotizacion_id: `eq.${id}`, producto_id: `not.in.(${productosQueQuedan.join(',')})` }
-        : { cotizacion_id: `eq.${id}` },
-  });
-
-  return id;
+  const respuesta = await api.post<CotizacionFilaApi>(
+    `${RUTA_RPC}/guardar_borrador_cotizacion`,
+    cuerpo,
+  );
+  return mapearCotizacionGuardada(respuesta.data);
 }
 
 /**
- * Envía la cotización al cliente (RF-18): pasa a "nueva" y el servidor fija la vigencia.
- * El servidor rechaza el envío sin productos o con un descuento mayor al subtotal.
+ * Envía al cliente un borrador ya guardado (RF-18): pasa a "nueva" y el servidor fija la vigencia
+ * (vence_en) con los días de parametros_negocio. El servidor rechaza el envío sin productos o con
+ * un descuento mayor al subtotal. Devuelve la cotización enviada con su total y su vencimiento.
  */
-export async function enviarCotizacion(id: string): Promise<void> {
+export async function enviarCotizacion(id: string): Promise<CotizacionGuardada> {
   if (!esUuid(id)) throw ERROR_NO_ENCONTRADA;
   const respuesta = await api.patch<CotizacionFilaApi[]>(
     RUTA_COTIZACIONES,
     { estado: 'nueva' },
     { params: { id: `eq.${id}` }, headers: DEVOLVER_FILA },
   );
-  if (respuesta.data.length === 0) throw ERROR_NO_ENCONTRADA;
+  const fila = respuesta.data[0];
+  if (!fila) throw ERROR_NO_ENCONTRADA;
+  return mapearCotizacionGuardada(fila);
 }
 
 /** El cliente abre el detalle: Nueva pasa a Vista (RF-21). Solo el dueño (lo valida la RPC). */

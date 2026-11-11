@@ -12,6 +12,7 @@ import {
   NOMBRE_ESTADO_COTIZACION,
   NOMBRE_TIPO_SERVICIO,
   type Cotizacion,
+  type CotizacionGuardada,
   type CotizacionPersonal,
   type EstadoCotizacion,
   type LineaCotizacion,
@@ -127,6 +128,20 @@ export function mapearSolicitudCreada(fila: CotizacionFilaApi): SolicitudCreada 
     id: fila.id,
     numero: fila.numero,
     estado: estadoVisible(fila.estado, fila.vence_en),
+  };
+}
+
+/**
+ * Cotización que devuelven guardar_borrador_cotizacion y el envío → CotizacionGuardada.
+ * El total es el que calculó el servidor.
+ */
+export function mapearCotizacionGuardada(fila: CotizacionFilaApi): CotizacionGuardada {
+  return {
+    id: fila.id,
+    numero: fila.numero,
+    estado: estadoVisible(fila.estado, fila.vence_en),
+    total: dinero(fila.total),
+    venceEn: fila.vence_en,
   };
 }
 

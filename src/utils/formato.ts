@@ -19,3 +19,21 @@ export function formatearTelefono(telefono: string): string {
     ? `${telefono.slice(0, 3)} ${telefono.slice(3, 6)} ${telefono.slice(6)}`
     : telefono;
 }
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/**
+ * Fecha corta como en el mockup de Cotizaciones: "2026-11-04T15:20:00Z" → "04 nov 2026".
+ * Usa la hora del teléfono. Se arma a mano para no depender de Intl. Texto vacío si la fecha no es válida.
+ */
+export function formatearFecha(fechaIso: string | null): string {
+  if (!fechaIso) {
+    return '';
+  }
+  const fecha = new Date(fechaIso);
+  if (Number.isNaN(fecha.getTime())) {
+    return '';
+  }
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${dia} ${MESES_CORTOS[fecha.getMonth()]} ${fecha.getFullYear()}`;
+}

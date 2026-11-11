@@ -315,23 +315,23 @@ export interface SolicitudCotizacionCuerpoApi {
   productos_interes: { producto_id: string; cantidad?: number }[];
 }
 
-/** Cuerpo de POST y PATCH /rest/v1/cotizaciones del personal (borrador, RF-16 y RF-17). */
-export interface CotizacionBorradorCuerpoApi {
+/**
+ * Cuerpo de POST /rest/v1/rpc/guardar_borrador_cotizacion (RF-16, RF-17; solo personal).
+ * La RPC guarda la cabecera y todas las líneas en una sola transacción (migración 006).
+ */
+export interface BorradorCotizacionCuerpoApi {
+  /** null: crea un borrador nuevo. Con id: completa esa solicitud o ese borrador. */
+  id: string | null;
   cliente_id: string;
   tipo_servicio: TipoServicioApi;
-  descripcion_necesidad: string | null;
-  estado: 'borrador';
+  /** null: se conserva la descripción que ya tenía (la de la solicitud). */
+  descripcion: string | null;
   descuento: number;
   incluye_servicio: boolean;
   /** null: el servidor pone la tarifa de parametros_negocio. */
   costo_servicio: number | null;
-}
-
-/** Cuerpo de cada línea al guardar un borrador (el servidor copia nombre, código y precio). */
-export interface CotizacionLineaCuerpoApi {
-  cotizacion_id: string;
-  producto_id: string;
-  cantidad: number;
+  /** Producto y cantidad; el servidor copia nombre, código y precio según el tipo del cliente. */
+  lineas: { producto_id: string; cantidad: number }[];
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -33,9 +33,11 @@ secciones 9 y RNF-10 de la documentación del proyecto.
       de ejecutarse desde la API; ver la sección 9).
    5. `supabase/migrations/005_solicitud_cotizacion.sql` (RPC `crear_solicitud_cotizacion`: la
       solicitud y sus productos de interés en una sola transacción; prompt F5).
-   6. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
+   6. `supabase/migrations/006_borrador_cotizacion.sql` (RPC `guardar_borrador_cotizacion`: la
+      cabecera y todas las líneas de un borrador en una sola transacción; prompt F6).
+   7. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
 
-   Si el proyecto ya tenía 001 a 004 y los datos de prueba, basta con ejecutar 005.
+   Si el proyecto ya tenía 001 a 005 y los datos de prueba, basta con ejecutar 006.
 3. Crea los tres usuarios de prueba en **Authentication > Users > Add user > Create new user**, con
    "Auto Confirm User" marcado:
    - `cliente@cse.test`
@@ -48,7 +50,7 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    y administrador y crean "Otro cliente (prueba)" con una ubicación y una cotización enviada, para
    comprobar que un cliente no ve lo ajeno.
 5. Revisa **Advisors > Security Advisor**: 0 errores. Solo deben quedar las advertencias aceptadas
-   de la sección 9 (10 funciones SECURITY DEFINER y Leaked Password Protection).
+   de la sección 9 (11 funciones SECURITY DEFINER y Leaked Password Protection).
 6. Copia los valores para el `.env` de la app (**Project Settings > API Keys** y **Data API**):
    - `EXPO_PUBLIC_SUPABASE_URL` = Project URL, por ejemplo `https://abcd1234.supabase.co`.
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = la **publishable key** (`sb_publishable_...`). El nombre de
@@ -110,7 +112,8 @@ El teléfono debe tener solo dígitos (7 a 15); si no, el registro falla en el s
 | Clientes (RF-33) | `GET`, `POST`, `PATCH /rest/v1/clientes` |
 | Solicitar cotización (RF-15) | RPC `crear_solicitud_cotizacion` (una sola petición; ver la tabla de RPC) |
 | Cotizaciones con líneas (RF-19, RF-20, RF-21) | `GET /rest/v1/cotizaciones?select=*,estado_actual,cotizacion_lineas(*)&order=creado_en.desc` |
-| Elaborar y enviar (RF-16 a RF-18) | `POST`/`PATCH`/`DELETE /rest/v1/cotizacion_lineas` y `PATCH /rest/v1/cotizaciones?id=eq.<id>` con `{"estado": "nueva"}` |
+| Guardar borrador (RF-16, RF-17) | RPC `guardar_borrador_cotizacion` (una sola petición; ver la tabla de RPC) |
+| Enviar (RF-18) | `PATCH /rest/v1/cotizaciones?id=eq.<id>` con `{"estado": "nueva"}` (solo un borrador ya guardado) |
 | Pedidos (RF-14) | `GET /rest/v1/pedidos?select=*,pedido_lineas(*)&order=creado_en.desc` |
 | Ubicaciones (RF-26) | `GET`, `POST /rest/v1/ubicaciones` |
 | Citas (RF-27, RF-28) | `GET`, `POST /rest/v1/citas`; el personal `PATCH /rest/v1/citas?id=eq.<id>` con `{"estado": ...}` |
@@ -118,8 +121,12 @@ El teléfono debe tener solo dígitos (7 a 15); si no, el registro falla en el s
 Notas para quien programe los servicios:
 
 - **Totales de la cotización:** los calcula el servidor. El trabajador envía `descuento`,
-  `incluye_servicio` y, si quiere cambiarlo, `costo_servicio`; las líneas solo llevan
-  `cotizacion_id`, `producto_id` y `cantidad` (el precio, nombre y código los copia el servidor).
+  `incluye_servicio` y, si quiere cambiarlo, `costo_servicio` (null = tarifa de
+  `parametros_negocio`); las líneas solo llevan `producto_id` y `cantidad` (el precio, nombre y
+  código los copia el servidor según el tipo del cliente).
+- **Borrador y envío (F6):** la app primero guarda el borrador con `guardar_borrador_cotizacion`
+  y después lo envía con el `PATCH` a `nueva`. Si el envío falla (sin conexión o rechazado por el
+  servidor), la cotización sigue en Borrador con lo último que se guardó.
 - **`estado_actual`** es una columna calculada: devuelve `vencida` si la cotización está nueva o
   vista y ya pasó `vence_en`. La app debe mostrar ese valor.
 - **Fórmula (igual en app y servidor):** base = subtotal − descuento (mínimo 0);
@@ -134,6 +141,7 @@ Todas con `POST` y cuerpo JSON con los nombres exactos de los parámetros.
 | Función | Cuerpo | Devuelve | Quién |
 | --- | --- | --- | --- |
 | `crear_solicitud_cotizacion` (RF-15) | `{ "tipo_servicio": "instalacion", "descripcion": "...", "productos_interes": [{ "producto_id": "...", "cantidad": 2 }] }` (`productos_interes` y `cantidad` son opcionales) | La cotización creada (estado `solicitada`) | Cliente |
+| `guardar_borrador_cotizacion` (RF-16, RF-17) | `{ "id": null, "cliente_id": "...", "tipo_servicio": "instalacion", "descripcion": null, "descuento": 20000, "incluye_servicio": true, "costo_servicio": null, "lineas": [{ "producto_id": "...", "cantidad": 2 }] }` (`id` null crea uno nuevo; con `id` completa esa solicitud o ese borrador y reemplaza todas sus líneas) | La cotización guardada (estado `borrador`) con los totales del servidor | Trabajador, administrador |
 | `registrar_pedido_carrito` (RF-13) | `{ "lineas": [{ "producto_id": "...", "cantidad": 2 }], "incluye_servicio": true, "tipo_servicio": "instalacion" }` | El pedido creado | Cliente |
 | `aceptar_cotizacion` (RF-22) | `{ "id": "..." }` | El pedido creado | Cliente dueño |
 | `rechazar_cotizacion` (RF-22) | `{ "id": "..." }` | La cotización | Cliente dueño |
@@ -354,7 +362,8 @@ La respuesta no debe tener `costo`. `GET /rest/v1/productos` debe devolver `[]`.
 El primer análisis dio **0 errores y 14 advertencias**. El archivo `004_ajustes_seguridad.sql`
 corrige 4 advertencias. Las otras 10 se aceptan a propósito y se explican abajo. Con
 `005_solicitud_cotizacion.sql` (F5) se suma una función expuesta a propósito,
-`crear_solicitud_cotizacion`, así que quedan 11 advertencias aceptadas.
+`crear_solicitud_cotizacion`, y con `006_borrador_cotizacion.sql` (F6) otra,
+`guardar_borrador_cotizacion`, así que quedan 12 advertencias aceptadas.
 
 ### Corregidas con 004: funciones de trigger
 
@@ -378,7 +387,7 @@ Se comprobó en el PostgreSQL local, ya con 004 aplicado:
 - Dejar cero administradores activos fue rechazado.
 - El flujo completo de cotización, pedido y cita siguió pasando.
 
-### Aceptadas: funciones SECURITY DEFINER que `authenticated` puede ejecutar (10)
+### Aceptadas: funciones SECURITY DEFINER que `authenticated` puede ejecutar (11)
 
 Están expuestas a propósito. SECURITY DEFINER les permite leer o escribir lo que el usuario no puede
 tocar directamente; por eso cada una valida adentro quién llama y qué devuelve. `anon` no puede
@@ -387,6 +396,7 @@ ejecutar ninguna (002 y 003 le quitan EXECUTE).
 | Función | Por qué está expuesta | Control adentro |
 | --- | --- | --- |
 | `crear_solicitud_cotizacion` | El cliente solicita una cotización con sus productos de interés (RF-15) en una sola transacción: si un producto falla, no queda la solicitud a medias. | Exige un cliente activo (`mi_cliente_id()`) y crea siempre a nombre de su propio `cliente_id` (la app no lo envía). Estado `solicitada`, descuento 0 y tarifa del servicio, como el trigger de 002. Valida tipo de servicio, descripción, formato de los productos y cantidades enteras ≥ 1; el trigger de 003 rechaza productos inexistentes o desactivados. Probada en PostgreSQL local (`docs/evidencias/f5-prueba-solicitud.txt`). |
+| `guardar_borrador_cotizacion` | El personal guarda la cabecera y todas las líneas de un borrador (RF-16, RF-17) en una sola transacción: si una línea falla, el borrador queda como estaba. | Exige personal activo (`es_personal()`). Solo edita cotizaciones en `solicitada` o `borrador` (una enviada no se edita) y las bloquea con `FOR UPDATE`. Valida cliente, tipo de servicio, descuento y costo no negativos, al menos una línea, cantidades enteras ≥ 1 y que el descuento no supere el subtotal. Los triggers de 003 copian precio y nombre, rechazan productos desactivados, sin precio o sin inventario y calculan los totales. Probada en PostgreSQL local (`docs/evidencias/f6-prueba-borrador.txt`). |
 | `registrar_pedido_carrito` | El cliente compra desde el carrito (RF-13). No tiene permiso de insertar pedidos ni de cambiar el inventario. | Exige un cliente activo (`mi_cliente_id()`). Valida las cantidades. Toma el precio del producto según el tipo del cliente, nunca de la app. Bloquea los productos con `FOR UPDATE` y verifica el inventario antes de descontarlo. |
 | `aceptar_cotizacion` | El cliente convierte la cotización en pedido (RF-22). | Solo el dueño de la cotización. Solo en estado nueva o vista y sin vencer. Bloquea la cotización y los productos y vuelve a verificar el inventario. |
 | `rechazar_cotizacion` | El cliente rechaza la cotización (RF-22). No tiene permiso de editar cotizaciones. | Solo el dueño. Solo en estado nueva o vista y sin vencer. |
@@ -397,7 +407,8 @@ ejecutar ninguna (002 y 003 le quitan EXECUTE).
 | `mi_cliente_id` | La usan las políticas RLS y las RPC. | Solo devuelve el `cliente_id` de quien llama, si es cliente activo. |
 | `mi_tipo_cliente` | La usa `catalogo_productos` para elegir el precio. | Solo devuelve el tipo (instalador o final) de quien llama. |
 
-Ninguna de las diez entrega datos de otro usuario: todas se filtran por `auth.uid()`.
+Ninguna entrega datos de otro usuario: las del cliente se filtran por `auth.uid()` y la del
+personal exige un trabajador o administrador activo.
 
 ### Aceptada: Leaked Password Protection (1)
 

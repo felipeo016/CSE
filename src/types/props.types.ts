@@ -2,10 +2,22 @@ import type { ComponentProps, ReactNode } from 'react';
 import type { KeyboardTypeOptions } from 'react-native';
 import type { Feather } from '@expo/vector-icons';
 
+import type { ResultadoCalculoTotal } from '../hooks/useCalculoTotal';
 import type { LineaCarrito, ServicioCarrito } from '../models/Carrito';
 import type { Cliente } from '../models/Cliente';
-import type { SolicitudCreada } from '../models/Cotizacion';
-import type { ProductoPersonal, ProductoSegunRol } from '../models/Producto';
+import type {
+  CotizacionGuardada,
+  CotizacionPersonal,
+  EstadoCotizacion,
+  SolicitudCreada,
+  TipoServicio,
+} from '../models/Cotizacion';
+import type {
+  ClienteElegido,
+  LineaVista,
+  ValoresInicialesCotizacion,
+} from '../models/FormularioCotizacion';
+import type { ProductoPersonal, ProductoSegunRol, TipoCliente } from '../models/Producto';
 import type { Rol, Usuario } from '../models/Usuario';
 
 /** Nombre de un ícono del set Feather (@expo/vector-icons), el estilo de íconos del mockup. */
@@ -294,4 +306,78 @@ export interface ResumenCarritoProps {
 export interface SelectorServicioProps {
   servicio: ServicioCarrito;
   onCambiar: (servicio: ServicioCarrito) => void;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Cotizaciones del trabajador y Crear cotización (F6)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Etiqueta de color con el estado de una cotización (mockup de Cotizaciones).
+ * Para el personal, Nueva y Vista se muestran como "Enviada" (RF-19).
+ */
+export interface EtiquetaEstadoCotizacionProps {
+  estado: EstadoCotizacion;
+  paraPersonal?: boolean;
+}
+
+/** Tarjeta de la lista de cotizaciones del trabajador: número, cliente, fecha, total y estado. */
+export interface TarjetaCotizacionProps {
+  cotizacion: CotizacionPersonal;
+  /** Abre el formulario (borrador) o el detalle (las demás). */
+  onPress: () => void;
+  /** Solo en solicitudes: botón para convertirla en cotización. */
+  onCrearCotizacion?: () => void;
+}
+
+/** Campo para elegir el cliente de la cotización; abre una lista con búsqueda. */
+export interface SelectorClienteProps {
+  cliente: ClienteElegido | null;
+  onElegir: (cliente: ClienteElegido) => void;
+  /** true cuando la cotización viene de una solicitud: el cliente no se cambia. */
+  bloqueado?: boolean;
+  error?: string | null;
+}
+
+/** Ventana para buscar un producto del inventario y agregarlo a la cotización (RF-16). */
+export interface SelectorProductoCotizacionProps {
+  visible: boolean;
+  /** Tipo del cliente elegido: define el precio y si el producto se puede agregar. */
+  tipoCliente: TipoCliente;
+  /** Productos que ya están en la cotización (no se agregan dos veces). */
+  idsEnCotizacion: readonly string[];
+  onElegir: (producto: ProductoSegunRol) => void;
+  onCerrar: () => void;
+}
+
+/** Lista de clientes dentro de la ventana de SelectorCliente. */
+export interface ListaClientesSelectorProps {
+  /** Texto ya "esperado" (useRetraso) para buscar en el servidor. */
+  busqueda: string;
+  onElegir: (cliente: ClienteElegido) => void;
+}
+
+/** Una línea de la cotización: producto, precio, contador de cantidad y Quitar. */
+export interface LineaCotizacionItemProps {
+  linea: LineaVista;
+  onCambiarCantidad: (cantidad: number) => void;
+  onQuitar: () => void;
+}
+
+/** Resumen azul marino de la cotización (mockup): subtotal, descuento, IVA, servicio y total. */
+export interface ResumenCotizacionProps {
+  calculo: ResultadoCalculoTotal;
+  /** Servicio incluido (para el nombre de la fila); null si no se incluye. */
+  servicio: TipoServicio | null;
+}
+
+/** Formulario de la cotización: arranca vacío, con un borrador o con una solicitud. */
+export interface FormularioCotizacionProps {
+  inicial: ValoresInicialesCotizacion;
+}
+
+/** Mensaje de cotización enviada con lo que respondió el servidor. */
+export interface ConfirmacionEnvioCotizacionProps {
+  enviada: CotizacionGuardada;
+  clienteNombre: string;
 }
