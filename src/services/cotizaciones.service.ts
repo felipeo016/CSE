@@ -15,6 +15,7 @@ import type {
   ErrorApi,
   PedidoApi,
   SolicitudCotizacionCuerpoApi,
+  SolicitudCreadaApi,
 } from '../types/api.types';
 import type {
   CotizacionGuardada,
@@ -36,6 +37,11 @@ import { esUuid } from '../utils/consultas';
  */
 
 const RUTA_COTIZACIONES = '/rest/v1/cotizaciones';
+/**
+ * Bandeja y detalle del cliente (migración 007). La vista trae todas sus cotizaciones, pero las
+ * que el trabajador aún prepara llegan como "solicitada", con el dinero en null y sin líneas.
+ */
+const RUTA_COTIZACIONES_CLIENTE = '/rest/v1/cotizaciones_cliente';
 const RUTA_RPC = '/rest/v1/rpc';
 
 /** Pide al servidor que devuelva la fila guardada en POST y PATCH. */
@@ -46,7 +52,7 @@ const DEVOLVER_FILA = { Prefer: 'return=representation' };
  * Ninguna es costo ni ganancia de productos (RNF-06). estado_actual es la columna calculada que
  * devuelve "vencida" si ya pasó la vigencia.
  */
-const COLUMNAS_CLIENTE = [
+const COLUMNAS_CABECERA = [
   'id',
   'numero',
   'tipo_servicio',
@@ -64,17 +70,28 @@ const COLUMNAS_CLIENTE = [
   'vista_en',
   'respondida_en',
   'creado_en',
-  'cotizacion_lineas(id,producto_id,codigo_producto,nombre_producto,precio_unitario,cantidad,subtotal)',
-  'cotizacion_productos_interes(id,producto_id,nombre_producto,cantidad)',
 ].join(',');
 
 /**
- * El personal recibe además el cliente. Con búsqueda por cliente se usa !inner: así PostgREST
- * solo devuelve las cotizaciones cuyo cliente cumple el filtro (sin !inner devolvería todas).
+ * Cliente (vista cotizaciones_cliente): las líneas y los productos de interés ya vienen como
+ * listas dentro de cada fila, con los mismos campos, así que se piden como columnas normales.
+ */
+const COLUMNAS_CLIENTE = `${COLUMNAS_CABECERA},cotizacion_lineas,cotizacion_productos_interes`;
+
+/**
+ * Personal (tabla cotizaciones): líneas y productos de interés embebidos, y además el cliente.
+ * Con búsqueda por cliente se usa !inner: así PostgREST solo devuelve las cotizaciones cuyo
+ * cliente cumple el filtro (sin !inner devolvería todas).
  */
 function columnasPersonal(conBusquedaCliente: boolean): string {
   const embebido = conBusquedaCliente ? 'clientes!inner' : 'clientes';
-  return `${COLUMNAS_CLIENTE},cliente_id,cliente:${embebido}(id,nombre,telefono,tipo)`;
+  return [
+    COLUMNAS_CABECERA,
+    'cotizacion_lineas(id,producto_id,codigo_producto,nombre_producto,precio_unitario,cantidad,subtotal)',
+    'cotizacion_productos_interes(id,producto_id,nombre_producto,cantidad)',
+    'cliente_id',
+    `cliente:${embebido}(id,nombre,telefono,tipo)`,
+  ].join(',');
 }
 
 /** Error para una cotización que no existe o que no es del cliente (RF-21). */
@@ -108,8 +125,11 @@ function parametrosDeFiltros(filtros: FiltrosCotizaciones, esPersonal: boolean) 
   const parametros: Record<string, string> = {
     select: esPersonal ? columnasPersonal(busqueda !== '') : COLUMNAS_CLIENTE,
     order: 'creado_en.desc',
-    'cotizacion_lineas.order': 'nombre_producto',
   };
+  // Orden de las líneas embebidas (personal). En la vista del cliente ya vienen ordenadas.
+  if (esPersonal) {
+    parametros['cotizacion_lineas.order'] = 'nombre_producto';
+  }
 
   // El filtro usa estado_actual: así una cotización vencida no aparece como "Enviada".
   if (filtros.estado === 'enviada') {
@@ -133,7 +153,7 @@ export async function listarCotizaciones(
   filtros: FiltrosCotizaciones = {},
 ): Promise<CotizacionSegunRol[]> {
   if (rolActual() === 'cliente') {
-    const respuesta = await api.get<CotizacionClienteApi[]>(RUTA_COTIZACIONES, {
+    const respuesta = await api.get<CotizacionClienteApi[]>(RUTA_COTIZACIONES_CLIENTE, {
       params: parametrosDeFiltros(filtros, false),
     });
     return respuesta.data.map(mapearCotizacionCliente);
@@ -157,7 +177,7 @@ export async function obtenerCotizacion(id: string): Promise<CotizacionSegunRol 
   }
 
   if (rol === 'cliente') {
-    const respuesta = await api.get<CotizacionClienteApi[]>(RUTA_COTIZACIONES, {
+    const respuesta = await api.get<CotizacionClienteApi[]>(RUTA_COTIZACIONES_CLIENTE, {
       params: { ...parametrosDeFiltros({}, false), id: `eq.${id}` },
     });
     const fila = respuesta.data[0];
@@ -188,7 +208,7 @@ export async function crearSolicitudCotizacion(
         : { producto_id: producto.productoId, cantidad: producto.cantidad },
     ),
   };
-  const respuesta = await api.post<CotizacionFilaApi>(
+  const respuesta = await api.post<SolicitudCreadaApi>(
     `${RUTA_RPC}/crear_solicitud_cotizacion`,
     cuerpo,
   );

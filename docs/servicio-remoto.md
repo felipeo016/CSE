@@ -35,9 +35,12 @@ secciones 9 y RNF-10 de la documentación del proyecto.
       solicitud y sus productos de interés en una sola transacción; prompt F5).
    6. `supabase/migrations/006_borrador_cotizacion.sql` (RPC `guardar_borrador_cotizacion`: la
       cabecera y todas las líneas de un borrador en una sola transacción; prompt F6).
-   7. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
+   7. `supabase/migrations/007_borrador_oculto_cliente.sql` (el cliente no ve una cotización
+      mientras se prepara: políticas de lectura por estado, vista `cotizaciones_cliente` y
+      `marcar_cotizacion_vista` sin devolver borradores; ver la sección 5).
+   8. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
 
-   Si el proyecto ya tenía 001 a 005 y los datos de prueba, basta con ejecutar 006.
+   Si el proyecto ya tenía 001 a 006 y los datos de prueba, basta con ejecutar 007.
 3. Crea los tres usuarios de prueba en **Authentication > Users > Add user > Create new user**, con
    "Auto Confirm User" marcado:
    - `cliente@cse.test`
@@ -50,7 +53,7 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    y administrador y crean "Otro cliente (prueba)" con una ubicación y una cotización enviada, para
    comprobar que un cliente no ve lo ajeno.
 5. Revisa **Advisors > Security Advisor**: 0 errores. Solo deben quedar las advertencias aceptadas
-   de la sección 9 (11 funciones SECURITY DEFINER y Leaked Password Protection).
+   de la sección 9 (12 funciones SECURITY DEFINER y Leaked Password Protection).
 6. Copia los valores para el `.env` de la app (**Project Settings > API Keys** y **Data API**):
    - `EXPO_PUBLIC_SUPABASE_URL` = Project URL, por ejemplo `https://abcd1234.supabase.co`.
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = la **publishable key** (`sb_publishable_...`). El nombre de
@@ -111,7 +114,8 @@ El teléfono debe tener solo dígitos (7 a 15); si no, el registro falla en el s
 | Productos del personal (RF-29 a RF-31) | `GET`, `POST`, `PATCH /rest/v1/productos` (eliminar = `PATCH {"activo": false}`) |
 | Clientes (RF-33) | `GET`, `POST`, `PATCH /rest/v1/clientes` |
 | Solicitar cotización (RF-15) | RPC `crear_solicitud_cotizacion` (una sola petición; ver la tabla de RPC) |
-| Cotizaciones con líneas (RF-19, RF-20, RF-21) | `GET /rest/v1/cotizaciones?select=*,estado_actual,cotizacion_lineas(*)&order=creado_en.desc` |
+| Cotizaciones con líneas, personal (RF-19) | `GET /rest/v1/cotizaciones?select=*,estado_actual,cotizacion_lineas(*)&order=creado_en.desc` |
+| Bandeja y detalle del cliente (RF-20, RF-21) | `GET /rest/v1/cotizaciones_cliente?select=*&order=creado_en.desc` (líneas y productos de interés vienen como listas en cada fila; ver la sección 5) |
 | Guardar borrador (RF-16, RF-17) | RPC `guardar_borrador_cotizacion` (una sola petición; ver la tabla de RPC) |
 | Enviar (RF-18) | `PATCH /rest/v1/cotizaciones?id=eq.<id>` con `{"estado": "nueva"}` (solo un borrador ya guardado) |
 | Pedidos (RF-14) | `GET /rest/v1/pedidos?select=*,pedido_lineas(*)&order=creado_en.desc` |
@@ -140,7 +144,7 @@ Todas con `POST` y cuerpo JSON con los nombres exactos de los parámetros.
 
 | Función | Cuerpo | Devuelve | Quién |
 | --- | --- | --- | --- |
-| `crear_solicitud_cotizacion` (RF-15) | `{ "tipo_servicio": "instalacion", "descripcion": "...", "productos_interes": [{ "producto_id": "...", "cantidad": 2 }] }` (`productos_interes` y `cantidad` son opcionales) | La cotización creada (estado `solicitada`) | Cliente |
+| `crear_solicitud_cotizacion` (RF-15) | `{ "tipo_servicio": "instalacion", "descripcion": "...", "productos_interes": [{ "producto_id": "...", "cantidad": 2 }] }` (`productos_interes` y `cantidad` son opcionales) | La cotización creada: solo `id`, `numero` y `estado` (`solicitada`); las demás columnas en null (007) | Cliente |
 | `guardar_borrador_cotizacion` (RF-16, RF-17) | `{ "id": null, "cliente_id": "...", "tipo_servicio": "instalacion", "descripcion": null, "descuento": 20000, "incluye_servicio": true, "costo_servicio": null, "lineas": [{ "producto_id": "...", "cantidad": 2 }] }` (`id` null crea uno nuevo; con `id` completa esa solicitud o ese borrador y reemplaza todas sus líneas) | La cotización guardada (estado `borrador`) con los totales del servidor | Trabajador, administrador |
 | `registrar_pedido_carrito` (RF-13) | `{ "lineas": [{ "producto_id": "...", "cantidad": 2 }], "incluye_servicio": true, "tipo_servicio": "instalacion" }` | El pedido creado | Cliente |
 | `aceptar_cotizacion` (RF-22) | `{ "id": "..." }` | El pedido creado | Cliente dueño |
@@ -179,6 +183,24 @@ por ejemplo que el administrador cree usuarios de Auth (RF-34, prompt F8):
   está inactivo), `es_personal()` (trabajador o administrador activo) y `mi_cliente_id()`.
 - **Cliente:** lee y escribe solo lo de su `cliente_id` (cotizaciones, pedidos, citas, ubicaciones).
   Solo crea solicitudes de cotización; acepta, rechaza y marca como vista con las RPC.
+- **Cotización en preparación (migración 007).** Borrador es un estado del lado del trabajador
+  (sección 5) y la cotización llega a la bandeja del cliente al enviarla (RF-18):
+  - En las tablas `cotizaciones` y `cotizacion_lineas` el cliente solo lee sus cotizaciones en
+    nueva, vista, aceptada, rechazada o vencida.
+  - Su bandeja y su detalle salen de la vista `cotizaciones_cliente` (security_invoker), que toma
+    los datos de `cotizaciones_del_cliente()` (SECURITY DEFINER, como `productos_catalogo`). Trae
+    todas sus cotizaciones, pero en solicitada o borrador llegan como "solicitada", con subtotal,
+    descuento, impuesto, costo del servicio, total e incluye_servicio en null y sin líneas. Los
+    productos de interés sí llegan: los escribió el propio cliente y no tienen precios.
+  - `marcar_cotizacion_vista` responde "Cotización no encontrada" con una cotización en
+    preparación; `aceptar_cotizacion` y `rechazar_cotizacion` ya la rechazaban.
+  - `crear_solicitud_cotizacion` le devuelve al cliente solo `id`, `numero` y `estado`; las demás
+    columnas llegan en null. Sigue devolviendo una fila de `cotizaciones` porque `create or
+    replace` no puede cambiar el tipo que devuelve una función.
+  - Por qué así: RLS decide filas, no columnas por fila, y cliente y personal usan el mismo rol
+    de base de datos (`authenticated`), así que no se pueden quitar columnas con GRANT solo al
+    cliente. Una vista SECURITY DEFINER la marcaría el Security Advisor como error.
+  - Para el personal no cambia nada: sigue leyendo la tabla `cotizaciones` completa.
 - **Personal:** crea y edita productos y clientes, elabora y envía cotizaciones y cambia el estado
   de las citas (Programada → Realizada o Cancelada).
 - **Administrador:** además cambia roles y activa o desactiva perfiles. Nadie cambia su propio rol
@@ -335,6 +357,18 @@ select * from public.registrar_pedido_carrito(
   false, null);
 ```
 
+```sql
+-- 11. (007) Como cliente, una cotización en preparación llega sin dinero ni líneas.
+--     Esperado: las solicitadas o borradores con estado "solicitada", totales en null y
+--     cotizacion_lineas = []; las enviadas con sus totales y líneas.
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select id from auth.users where email = 'cliente@cse.test'),
+                    'role', 'authenticated')::text, true);
+set local role authenticated;
+select numero, estado, estado_actual, subtotal, total, cotizacion_lineas
+from public.cotizaciones_cliente order by creado_en desc;
+```
+
 Prueba por HTTP (opcional, RNF-06): en el navegador o con Postman, inicia sesión como cliente con
 `POST /auth/v1/token?grant_type=password` y pide
 `GET /rest/v1/productos_catalogo?select=*` con `apikey` y `Authorization: Bearer <access_token>`.
@@ -362,8 +396,10 @@ La respuesta no debe tener `costo`. `GET /rest/v1/productos` debe devolver `[]`.
 El primer análisis dio **0 errores y 14 advertencias**. El archivo `004_ajustes_seguridad.sql`
 corrige 4 advertencias. Las otras 10 se aceptan a propósito y se explican abajo. Con
 `005_solicitud_cotizacion.sql` (F5) se suma una función expuesta a propósito,
-`crear_solicitud_cotizacion`, y con `006_borrador_cotizacion.sql` (F6) otra,
-`guardar_borrador_cotizacion`, así que quedan 12 advertencias aceptadas.
+`crear_solicitud_cotizacion`, con `006_borrador_cotizacion.sql` (F6) otra,
+`guardar_borrador_cotizacion`, y con `007_borrador_oculto_cliente.sql` otra,
+`cotizaciones_del_cliente`, así que quedan 13 advertencias aceptadas. La vista
+`cotizaciones_cliente` de 007 es security_invoker, así que no suma errores.
 
 ### Corregidas con 004: funciones de trigger
 
@@ -387,7 +423,7 @@ Se comprobó en el PostgreSQL local, ya con 004 aplicado:
 - Dejar cero administradores activos fue rechazado.
 - El flujo completo de cotización, pedido y cita siguió pasando.
 
-### Aceptadas: funciones SECURITY DEFINER que `authenticated` puede ejecutar (11)
+### Aceptadas: funciones SECURITY DEFINER que `authenticated` puede ejecutar (12)
 
 Están expuestas a propósito. SECURITY DEFINER les permite leer o escribir lo que el usuario no puede
 tocar directamente; por eso cada una valida adentro quién llama y qué devuelve. `anon` no puede
@@ -395,12 +431,13 @@ ejecutar ninguna (002 y 003 le quitan EXECUTE).
 
 | Función | Por qué está expuesta | Control adentro |
 | --- | --- | --- |
-| `crear_solicitud_cotizacion` | El cliente solicita una cotización con sus productos de interés (RF-15) en una sola transacción: si un producto falla, no queda la solicitud a medias. | Exige un cliente activo (`mi_cliente_id()`) y crea siempre a nombre de su propio `cliente_id` (la app no lo envía). Estado `solicitada`, descuento 0 y tarifa del servicio, como el trigger de 002. Valida tipo de servicio, descripción, formato de los productos y cantidades enteras ≥ 1; el trigger de 003 rechaza productos inexistentes o desactivados. Probada en PostgreSQL local (`docs/evidencias/f5-prueba-solicitud.txt`). |
+| `crear_solicitud_cotizacion` | El cliente solicita una cotización con sus productos de interés (RF-15) en una sola transacción: si un producto falla, no queda la solicitud a medias. | Exige un cliente activo (`mi_cliente_id()`) y crea siempre a nombre de su propio `cliente_id` (la app no lo envía). Estado `solicitada`, descuento 0 y tarifa del servicio, como el trigger de 002. Valida tipo de servicio, descripción, formato de los productos y cantidades enteras ≥ 1; el trigger de 003 rechaza productos inexistentes o desactivados. Desde 007 responde solo `id`, `numero` y `estado` (el dinero y lo demás en null). Probada en PostgreSQL local (`docs/evidencias/f5-prueba-solicitud.txt` y `docs/evidencias/f-borrador-oculto.txt`). |
 | `guardar_borrador_cotizacion` | El personal guarda la cabecera y todas las líneas de un borrador (RF-16, RF-17) en una sola transacción: si una línea falla, el borrador queda como estaba. | Exige personal activo (`es_personal()`). Solo edita cotizaciones en `solicitada` o `borrador` (una enviada no se edita) y las bloquea con `FOR UPDATE`. Valida cliente, tipo de servicio, descuento y costo no negativos, al menos una línea, cantidades enteras ≥ 1 y que el descuento no supere el subtotal. Los triggers de 003 copian precio y nombre, rechazan productos desactivados, sin precio o sin inventario y calculan los totales. Probada en PostgreSQL local (`docs/evidencias/f6-prueba-borrador.txt`). |
 | `registrar_pedido_carrito` | El cliente compra desde el carrito (RF-13). No tiene permiso de insertar pedidos ni de cambiar el inventario. | Exige un cliente activo (`mi_cliente_id()`). Valida las cantidades. Toma el precio del producto según el tipo del cliente, nunca de la app. Bloquea los productos con `FOR UPDATE` y verifica el inventario antes de descontarlo. |
 | `aceptar_cotizacion` | El cliente convierte la cotización en pedido (RF-22). | Solo el dueño de la cotización. Solo en estado nueva o vista y sin vencer. Bloquea la cotización y los productos y vuelve a verificar el inventario. |
 | `rechazar_cotizacion` | El cliente rechaza la cotización (RF-22). No tiene permiso de editar cotizaciones. | Solo el dueño. Solo en estado nueva o vista y sin vencer. |
-| `marcar_cotizacion_vista` | El cliente abre el detalle (RF-21). | Solo el dueño. Solo pasa de nueva a vista, o a vencida si ya venció. |
+| `marcar_cotizacion_vista` | El cliente abre el detalle (RF-21). | Solo el dueño. Solo pasa de nueva a vista, o a vencida si ya venció. Desde 007, una cotización en solicitada o borrador responde "Cotización no encontrada" en vez de devolverse con sus totales. |
+| `cotizaciones_del_cliente` | Fuente de la vista `cotizaciones_cliente` (007). El cliente ya no puede leer en la tabla las cotizaciones en preparación, pero debe verlas en su bandeja como "Por cotizar". | Solo filas de `mi_cliente_id()` (personal o perfil inactivo: cero filas). En solicitada o borrador devuelve el estado "solicitada", el dinero e incluye_servicio en null y las líneas vacías. Nunca devuelve costo. Probada en PostgreSQL local (`docs/evidencias/f-borrador-oculto.txt`). |
 | `ventas_y_ganancias` | El administrador consulta el panel (RF-35). Necesita leer el costo. | Responde solo si `rol_actual()` es administrador; si no, "Acceso no autorizado". |
 | `catalogo_productos` | Fuente de la vista `productos_catalogo`. El cliente no puede leer la tabla `productos` (RNF-06). | Nunca devuelve `costo`. Solo productos activos y solo a usuarios con perfil activo. Devuelve únicamente el precio del tipo del cliente. |
 | `rol_actual` | La usan las políticas RLS en cada consulta. Si respetara la RLS de `perfiles`, se llamaría a sí misma sin fin. | Solo devuelve el rol de quien llama (`auth.uid()`), y null si el perfil está inactivo. |

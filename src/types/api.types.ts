@@ -301,8 +301,13 @@ type DineroCotizacionApi = 'descuento' | 'costo_servicio' | 'subtotal' | 'impues
  * Los valores de dinero y las líneas pueden faltar o llegar en null: el servidor puede no
  * entregarle al cliente los de una cotización que aún no le envían (Borrador). El mapper lo
  * traduce a "Por cotizar" (J5).
+ * El cliente la recibe de la vista cotizaciones_cliente (migración 007): mientras se prepara
+ * llega como "solicitada", con el dinero en null y cotizacion_lineas vacía.
  */
-export interface CotizacionClienteApi extends Omit<CotizacionFilaApi, DineroCotizacionApi> {
+export interface CotizacionClienteApi
+  extends Omit<CotizacionFilaApi, DineroCotizacionApi | 'incluye_servicio'> {
+  /** null mientras se prepara (migración 007). */
+  incluye_servicio?: boolean | null;
   descuento?: number | null;
   costo_servicio?: number | null;
   subtotal?: number | null;
@@ -318,6 +323,12 @@ export interface CotizacionPersonalApi extends CotizacionClienteApi {
   cliente_id: string;
   cliente: ClienteResumenApi | null;
 }
+
+/**
+ * Respuesta de crear_solicitud_cotizacion (migración 007): solo id, numero y estado. Las demás
+ * columnas de la cotización llegan en null, así que la app no las lee.
+ */
+export type SolicitudCreadaApi = Pick<CotizacionFilaApi, 'id' | 'numero' | 'estado'>;
 
 /** Cuerpo de POST /rest/v1/rpc/crear_solicitud_cotizacion (RF-15). */
 export interface SolicitudCotizacionCuerpoApi {

@@ -6,6 +6,7 @@ import type {
   CotizacionProductoInteresApi,
   EstadoCotizacionApi,
   PedidoApi,
+  SolicitudCreadaApi,
 } from '../types/api.types';
 import {
   ESTADOS_ENVIADA,
@@ -111,7 +112,8 @@ export function mapearCotizacionCliente(fila: CotizacionClienteApi): Cotizacion 
     subtotal: dinero(fila.subtotal),
     descuento: dinero(fila.descuento),
     impuesto: dinero(fila.impuesto),
-    incluyeServicio: fila.incluye_servicio,
+    // null mientras se prepara (007): se toma como false; "Por cotizar" no lo muestra.
+    incluyeServicio: fila.incluye_servicio ?? false,
     valorServicio: dinero(fila.costo_servicio),
     total: dinero(fila.total),
     venceEn: fila.vence_en,
@@ -131,12 +133,15 @@ export function mapearCotizacionPersonal(fila: CotizacionPersonalApi): Cotizacio
   };
 }
 
-/** Cotización que devuelve la RPC crear_solicitud_cotizacion → SolicitudCreada. */
-export function mapearSolicitudCreada(fila: CotizacionFilaApi): SolicitudCreada {
+/**
+ * Respuesta de la RPC crear_solicitud_cotizacion → SolicitudCreada. Desde la migración 007 el
+ * servidor solo envía id, numero y estado. Una solicitud recién creada no tiene vigencia.
+ */
+export function mapearSolicitudCreada(fila: SolicitudCreadaApi): SolicitudCreada {
   return {
     id: fila.id,
     numero: fila.numero,
-    estado: estadoVisible(fila.estado, fila.vence_en),
+    estado: estadoVisible(fila.estado, null),
   };
 }
 
