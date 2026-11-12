@@ -355,3 +355,35 @@ export interface PedidoApi {
   estado: 'pendiente';
   creado_en: string;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Ubicaciones de servicio (RF-26)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Fila de la tabla ubicaciones con el nombre del cliente
+ * (GET /rest/v1/ubicaciones?select=*,cliente:clientes(nombre)). RLS: el cliente recibe solo
+ * las suyas; el personal, todas (RNF-13).
+ */
+export interface UbicacionApi {
+  id: string;
+  cliente_id: string;
+  latitud: number;
+  longitud: number;
+  direccion: string;
+  referencia: string | null;
+  /** Usuario que la registró (el cliente o un trabajador); la pone el servidor. */
+  creada_por: string | null;
+  creado_en: string;
+  /** null si el cliente no se pudo leer. */
+  cliente: { nombre: string } | null;
+}
+
+/** Cuerpo de POST /rest/v1/ubicaciones. creada_por y creado_en los pone el servidor. */
+export interface UbicacionCuerpoApi {
+  cliente_id: string;
+  latitud: number;
+  longitud: number;
+  direccion: string;
+  referencia: string | null;
+}

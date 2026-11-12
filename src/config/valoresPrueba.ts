@@ -37,9 +37,8 @@ export const FRANJAS_HORARIAS: readonly FranjaHoraria[] = [
 export const CUPOS_POR_FRANJA: number | null = null;
 
 // VALOR DE PRUEBA — [Por confirmar con el cliente] (RF-23)
-// TODO: el equipo debe escribir aquí las coordenadas reales del negocio (reemplazan las de
-// Dosquebradas del ejercicio de clase). Mientras tanto quedan en 0, 0.
+// Coordenadas del negocio (reemplazan las de Dosquebradas del ejercicio de clase).
 export const COORDENADAS_NEGOCIO: Coordenadas = {
-  latitud: 0,
-  longitud: 0,
+  latitud: 4.92261613391541,
+  longitud: -75.06546509423036,
 };

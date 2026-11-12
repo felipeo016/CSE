@@ -1,10 +1,11 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, ReactNode, Ref } from 'react';
 import type { KeyboardTypeOptions } from 'react-native';
 import type { Feather } from '@expo/vector-icons';
 
 import type { ResultadoCalculoTotal } from '../hooks/useCalculoTotal';
 import type { LineaCarrito, ServicioCarrito } from '../models/Carrito';
 import type { Cliente } from '../models/Cliente';
+import type { Coordenadas } from '../config/valoresPrueba';
 import type {
   CotizacionGuardada,
   CotizacionPersonal,
@@ -17,7 +18,9 @@ import type {
   LineaVista,
   ValoresInicialesCotizacion,
 } from '../models/FormularioCotizacion';
+import type { EstadoSeguimiento, PuntoMapa } from '../models/Mapa';
 import type { ProductoPersonal, ProductoSegunRol, TipoCliente } from '../models/Producto';
+import type { Ubicacion } from '../models/Ubicacion';
 import type { Rol, Usuario } from '../models/Usuario';
 
 /** Nombre de un ícono del set Feather (@expo/vector-icons), el estilo de íconos del mockup. */
@@ -380,4 +383,85 @@ export interface FormularioCotizacionProps {
 export interface ConfirmacionEnvioCotizacionProps {
   enviada: CotizacionGuardada;
   clienteNombre: string;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mapa y ubicaciones (J4: RF-23 a RF-26)
+// ---------------------------------------------------------------------------------------------
+
+/** Acciones que una pantalla puede pedirle al mapa a través de su ref. */
+export interface ControlMapa {
+  /** Mueve la vista a un punto. Si el mapa aún carga, lo hace en cuanto esté listo. */
+  centrar: (punto: Coordenadas, zoom?: number) => void;
+}
+
+/** Mapa de OpenStreetMap con Leaflet en una WebView, con tres tipos de marcador (RF-23). */
+export interface MapaLeafletProps {
+  /** Marcador del negocio (COORDENADAS_NEGOCIO). */
+  negocio: Coordenadas;
+  /** Posición del teléfono; null la quita del mapa. */
+  dispositivo?: Coordenadas | null;
+  /** Ubicaciones de servicio, cada una con su marcador. */
+  ubicaciones?: readonly PuntoMapa[];
+  /** Punto elegido en modo selección; null lo quita. */
+  seleccion?: Coordenadas | null;
+  /** true: tocar el mapa llama a onElegirPunto con el punto tocado. */
+  modoSeleccion?: boolean;
+  onElegirPunto?: (punto: Coordenadas) => void;
+  /** Dónde se centra al cargar. Por defecto, el negocio. */
+  centroInicial?: Coordenadas;
+  ref?: Ref<ControlMapa>;
+}
+
+/** Panel inferior del mapa: Activar seguimiento, Pausar y Reanudar (mockup de Mapa, RF-25). */
+export interface PanelSeguimientoProps {
+  seguimiento: EstadoSeguimiento;
+  /** true mientras se pide el permiso o se arranca el GPS: evita pulsar dos veces. */
+  ocupado: boolean;
+  onActivar: () => void;
+  onPausar: () => void;
+  onReanudar: () => void;
+}
+
+/** Tarjeta de una ubicación de servicio en las listas (Mis ubicaciones, Ubicaciones). */
+export interface TarjetaUbicacionProps {
+  ubicacion: Ubicacion;
+  /** true en la lista del personal: muestra el nombre del cliente. */
+  mostrarCliente?: boolean;
+  onPress: () => void;
+}
+
+/** Tarjeta sobre el mapa cuando falta el permiso, el GPS está apagado o hubo un error (mockup). */
+export interface AvisoUbicacionProps {
+  icono: NombreIcono;
+  /** Color del ícono y de su círculo de fondo. */
+  color: string;
+  titulo: string;
+  detalle: string;
+  accionPrincipal: AccionEstadoVista & { icono: NombreIcono };
+  /** "Continuar sin ubicación": cierra el aviso y deja usar el mapa. */
+  onCerrar: () => void;
+}
+
+/** Botón con borde de color del panel de seguimiento (Pausar, Reanudar). */
+export interface BotonBordeProps {
+  texto: string;
+  icono: NombreIcono;
+  color: string;
+  habilitado: boolean;
+  onPress: () => void;
+}
+
+/** Contenido de la pantalla Mapa según su modo. */
+export interface ContenidoMapaProps {
+  /** 'negocio': ver el negocio, mi ubicación y el seguimiento; 'elegir': marcar un punto. */
+  modo: 'negocio' | 'elegir';
+  /** Punto donde centrar al abrir (por ejemplo, una ubicación de la lista); null = el negocio. */
+  centro: Coordenadas | null;
+}
+
+/** Formulario Registrar ubicación (RF-26). */
+export interface FormularioUbicacionProps {
+  /** Ficha de cliente de la cuenta (rol cliente); null para el personal, que elige el cliente. */
+  clientePropioId: string | null;
 }
