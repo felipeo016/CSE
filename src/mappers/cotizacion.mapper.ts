@@ -9,6 +9,7 @@ import type {
 } from '../types/api.types';
 import {
   ESTADOS_ENVIADA,
+  esPorCotizar,
   NOMBRE_ESTADO_COTIZACION,
   NOMBRE_TIPO_SERVICIO,
   type Cotizacion,
@@ -27,8 +28,8 @@ import { mapearClienteResumen } from './cliente.mapper';
  * Aquí se decide el estado que se muestra (Vencida) y se normalizan los números.
  */
 
-/** Número finito y no negativo; cualquier otro valor se trata como 0. */
-function dinero(valor: number): number {
+/** Número finito y no negativo; cualquier otro valor (también null o ausente) se trata como 0. */
+function dinero(valor: number | null | undefined): number {
   const numero = Number(valor);
   return Number.isFinite(numero) && numero >= 0 ? numero : 0;
 }
@@ -88,6 +89,11 @@ export function mapearCotizacionCliente(fila: CotizacionClienteApi): Cotizacion 
   // Se parte de estado_actual (calculado en el servidor) y se revisa otra vez la vigencia.
   const estado = estadoVisible(fila.estado_actual ?? fila.estado, fila.vence_en);
   const enviada = esEstadoEnviada(estado);
+  // El servidor puede no enviar el total (null o sin la columna). Se guarda la señal antes de
+  // que dinero() lo convierta en 0; un total de 0 que sí llega es un total válido.
+  const totalDisponible = fila.total !== null && fila.total !== undefined;
+  // "Por cotizar" para el cliente (J5): todavía no se la envían o no llegó su total.
+  const porCotizar = esPorCotizar(estado) || !totalDisponible;
   return {
     id: fila.id,
     numero: fila.numero,
@@ -98,7 +104,10 @@ export function mapearCotizacionCliente(fila: CotizacionClienteApi): Cotizacion 
     estadoNombre: NOMBRE_ESTADO_COTIZACION[estado],
     enviada,
     noLeida: estado === 'nueva',
-    puedeResponder: enviada,
+    // Sin total no se puede aceptar: el cliente no sabría cuánto paga.
+    puedeResponder: enviada && !porCotizar,
+    totalDisponible,
+    porCotizar,
     subtotal: dinero(fila.subtotal),
     descuento: dinero(fila.descuento),
     impuesto: dinero(fila.impuesto),

@@ -7,9 +7,11 @@ import type { LineaCarrito, ServicioCarrito } from '../models/Carrito';
 import type { Cliente } from '../models/Cliente';
 import type { Coordenadas } from '../config/valoresPrueba';
 import type {
+  Cotizacion,
   CotizacionGuardada,
-  CotizacionPersonal,
+  CotizacionSegunRol,
   EstadoCotizacion,
+  LineaCotizacion,
   SolicitudCreada,
   TipoServicio,
 } from '../models/Cotizacion';
@@ -317,16 +319,22 @@ export interface SelectorServicioProps {
 
 /**
  * Etiqueta de color con el estado de una cotización (mockup de Cotizaciones).
- * Para el personal, Nueva y Vista se muestran como "Enviada" (RF-19).
+ * Para el personal, Nueva y Vista se muestran como "Enviada" (RF-19). Para el cliente,
+ * Solicitada y Borrador se muestran como "Por cotizar" (J5): todavía no le han enviado precios.
  */
 export interface EtiquetaEstadoCotizacionProps {
   estado: EstadoCotizacion;
   paraPersonal?: boolean;
+  /** Solo cliente: true muestra "Por cotizar" aunque el estado sea otro (llegó sin total). */
+  porCotizar?: boolean;
 }
 
-/** Tarjeta de la lista de cotizaciones del trabajador: número, cliente, fecha, total y estado. */
+/**
+ * Tarjeta de la lista de cotizaciones: número, fecha, total y estado. Con una cotización del
+ * personal muestra además el cliente; con una del cliente, el punto de no leída (J5, RF-20).
+ */
 export interface TarjetaCotizacionProps {
-  cotizacion: CotizacionPersonal;
+  cotizacion: CotizacionSegunRol;
   /** Abre el formulario (borrador) o el detalle (las demás). */
   onPress: () => void;
   /** Solo en solicitudes: botón para convertirla en cotización. */
@@ -464,4 +472,39 @@ export interface ContenidoMapaProps {
 export interface FormularioUbicacionProps {
   /** Ficha de cliente de la cuenta (rol cliente); null para el personal, que elige el cliente. */
   clientePropioId: string | null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Bandeja, detalle de cotización y confirmación de pedido (J5: RF-13, RF-20 a RF-22)
+// ---------------------------------------------------------------------------------------------
+
+/** Una línea del detalle de cotización: producto, cantidad × precio y subtotal. */
+export interface LineaDetalleCotizacionProps {
+  linea: LineaCotizacion;
+  /** true en la última línea: no lleva separador debajo. */
+  ultima: boolean;
+}
+
+/** Parte del detalle de una solicitud aún sin cotizar: productos de interés del cliente. */
+export interface PorCotizarProps {
+  /** Nombre de cada producto de interés, con la cantidad si el cliente la indicó. */
+  productos: string[];
+  paraPersonal: boolean;
+}
+
+/** Tarjeta de totales del detalle: subtotal, descuento, IVA, servicio y total. */
+export interface TotalesCotizacionProps {
+  cotizacion: Cotizacion;
+}
+
+/** Aviso con la fecha de vigencia de la cotización según su estado. */
+export interface AvisoVigenciaProps {
+  cotizacion: Cotizacion;
+}
+
+/** Botones Aceptar y Rechazar del cliente, con el error de la última acción y Reintentar. */
+export interface AccionesClienteCotizacionProps {
+  cotizacion: Cotizacion;
+  /** Se llama tras un error que cambió el estado en el servidor (vencida, ya respondida). */
+  onEstadoCambiado: () => void;
 }

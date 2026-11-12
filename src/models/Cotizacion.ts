@@ -40,6 +40,21 @@ export const NOMBRE_TIPO_SERVICIO: Record<TipoServicio, string> = {
 export const ESTADOS_ENVIADA: readonly EstadoCotizacion[] = ['nueva', 'vista'];
 
 /**
+ * Estados que el cliente ve como "Por cotizar" (J5, RF-20): su solicitud todavía no tiene precios
+ * enviados. El Borrador es la cotización que el trabajador está preparando; el cliente no ve sus
+ * líneas ni su total hasta que se la envían.
+ */
+export const ESTADOS_POR_COTIZAR: readonly EstadoCotizacion[] = ['solicitada', 'borrador'];
+
+/** Texto que ve el cliente en una solicitud que aún no se cotiza. */
+export const TEXTO_POR_COTIZAR = 'Por cotizar';
+
+/** true si la cotización todavía no se le ha enviado al cliente (Solicitada o Borrador). */
+export function esPorCotizar(estado: EstadoCotizacion): boolean {
+  return ESTADOS_POR_COTIZAR.includes(estado);
+}
+
+/**
  * Filtros del listado del trabajador (RF-19). "enviada" agrupa Nueva y Vista.
  * Se agrega "vencida" para poder ver las que vencieron sin respuesta.
  */
@@ -111,8 +126,18 @@ export interface Cotizacion {
   enviada: boolean;
   /** true si el cliente aún no la abre (Nueva): la bandeja la resalta (RF-20). */
   noLeida: boolean;
-  /** true si el cliente todavía puede aceptarla o rechazarla (RF-22). */
+  /** true si el cliente todavía puede aceptarla o rechazarla (RF-22): enviada y con total. */
   puedeResponder: boolean;
+  /**
+   * false si el servidor no envió el total (null o sin la columna). En ese caso total y los
+   * demás valores de dinero quedan en 0 y no se deben mostrar.
+   */
+  totalDisponible: boolean;
+  /**
+   * true si el cliente la ve como "Por cotizar" (J5): está en Solicitada o Borrador, o el
+   * servidor no envió su total. Entonces no se muestran líneas, totales ni Aceptar/Rechazar.
+   */
+  porCotizar: boolean;
   subtotal: number;
   descuento: number;
   impuesto: number;
