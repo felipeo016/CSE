@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import Boton from './Boton';
+import { COLORES } from '../config/colores';
 import type { AvisoUbicacionProps } from '../types/props.types';
 
 /**
@@ -19,7 +20,7 @@ export default function AvisoUbicacion({
   return (
     <View
       className="mx-pantalla items-center rounded-tarjeta bg-fondo p-seccion"
-      style={{ elevation: 6, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12 }}
+      style={{ elevation: 6, shadowColor: COLORES.texto, shadowOpacity: 0.15, shadowRadius: 12 }}
       accessibilityLiveRegion="polite"
     >
       <View

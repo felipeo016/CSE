@@ -218,6 +218,7 @@ export default function MapaLeaflet({
         onMessage={alRecibirMensaje}
         onError={() => setEstado('error')}
         onRenderProcessGone={() => setEstado('error')}
+        onContentProcessDidTerminate={() => setEstado('error')}
         style={{ flex: 1, backgroundColor: COLORES.superficie }}
       />
       {estado === 'cargando' ? (

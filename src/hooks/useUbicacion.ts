@@ -139,20 +139,22 @@ export function useUbicacion(opciones: OpcionesUbicacion = {}): ResultadoUbicaci
   }, []);
 
   /**
-   * Comprueba el permiso (lo pide si aún se puede) y que el GPS esté encendido.
+   * Comprueba que el GPS esté encendido y luego el permiso (lo pide si aún se puede).
    * Devuelve true si ya se puede leer la posición.
    */
   const prepararUbicacion = useCallback(async (): Promise<boolean> => {
+    // Primero el GPS: en iOS, con la ubicación del sistema apagada, el permiso aparece como
+    // "denied" y se mostraría la tarjeta de permiso en vez de "Active la ubicación..." (CP-04).
+    if (!(await Location.hasServicesEnabledAsync())) {
+      setEstado('gps_apagado');
+      return false;
+    }
     let permiso = await Location.getForegroundPermissionsAsync();
     if (!permiso.granted && permiso.canAskAgain) {
       permiso = await Location.requestForegroundPermissionsAsync();
     }
     if (!permiso.granted) {
       setEstado('sin_permiso');
-      return false;
-    }
-    if (!(await Location.hasServicesEnabledAsync())) {
-      setEstado('gps_apagado');
       return false;
     }
     return true;
@@ -213,8 +215,12 @@ export function useUbicacion(opciones: OpcionesUbicacion = {}): ResultadoUbicaci
       // Se pausó o se salió del mapa mientras arrancaba: se libera de inmediato.
       if (miVersion !== version.current || !enPantalla.current) {
         nueva.remove();
+        // No se queda en "buscando": vuelve a lista si ya había posición.
+        setEstado(useMapaStore.getState().ubicacionActiva ? 'lista' : 'inactivo');
         return;
       }
+      // Si quedó una suscripción anterior, se quita antes de guardar la nueva (no quedan dos).
+      suscripcion.current?.remove();
       suscripcion.current = nueva;
       useMapaStore.getState().cambiarSeguimiento('activo');
       // Mientras llega la primera lectura se deja de mostrar "buscando" si ya había posición.
@@ -251,8 +257,14 @@ export function useUbicacion(opciones: OpcionesUbicacion = {}): ResultadoUbicaci
   // AppState: volver de Ajustes (CP-03) y no seguir en segundo plano (RF-25).
   useEffect(() => {
     const escucha = AppState.addEventListener('change', (nuevoEstado) => {
-      if (nuevoEstado === 'background' && suscripcion.current) {
-        detenerSeguimiento('pausado');
+      if (nuevoEstado === 'background') {
+        if (suscripcion.current) {
+          detenerSeguimiento('pausado');
+        } else {
+          // Aún no hay suscripción, pero puede estar arrancando: cambiar la versión hace que
+          // activarSeguimiento la quite apenas llegue (no queda abierta en segundo plano).
+          version.current += 1;
+        }
         return;
       }
       if (nuevoEstado !== 'active' || !enPantalla.current) {
