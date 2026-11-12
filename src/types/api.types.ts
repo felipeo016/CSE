@@ -292,14 +292,25 @@ export interface CotizacionFilaApi {
   creado_en: string;
 }
 
+/** Columnas de dinero que el servidor puede no enviar al cliente (ver CotizacionClienteApi). */
+type DineroCotizacionApi = 'descuento' | 'costo_servicio' | 'subtotal' | 'impuesto' | 'total';
+
 /**
  * Cotización con sus líneas y productos de interés, como la recibe el cliente.
  * estado_actual es la columna calculada del servidor (vencida si ya pasó vence_en).
+ * Los valores de dinero y las líneas pueden faltar o llegar en null: el servidor puede no
+ * entregarle al cliente los de una cotización que aún no le envían (Borrador). El mapper lo
+ * traduce a "Por cotizar" (J5).
  */
-export interface CotizacionClienteApi extends CotizacionFilaApi {
+export interface CotizacionClienteApi extends Omit<CotizacionFilaApi, DineroCotizacionApi> {
+  descuento?: number | null;
+  costo_servicio?: number | null;
+  subtotal?: number | null;
+  impuesto?: number | null;
+  total?: number | null;
   estado_actual: EstadoCotizacionApi;
-  cotizacion_lineas: CotizacionLineaApi[];
-  cotizacion_productos_interes: CotizacionProductoInteresApi[];
+  cotizacion_lineas?: CotizacionLineaApi[] | null;
+  cotizacion_productos_interes?: CotizacionProductoInteresApi[] | null;
 }
 
 /** Cotización como la recibe el personal: agrega el cliente al que pertenece. */

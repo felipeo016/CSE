@@ -3,36 +3,65 @@ import { Feather } from '@expo/vector-icons';
 
 import EtiquetaEstadoCotizacion from './EtiquetaEstadoCotizacion';
 import { COLORES } from '../config/colores';
+import { esCotizacionPersonal, TEXTO_POR_COTIZAR } from '../models/Cotizacion';
 import type { TarjetaCotizacionProps } from '../types/props.types';
 import { formatearFecha, formatearPrecio } from '../utils/formato';
 
 /**
- * Tarjeta de la lista de cotizaciones del trabajador (mockup de Cotizaciones, RF-19):
- * número, estado, cliente, tipo de servicio, fecha y total.
- * Una solicitud todavía no tiene productos: en lugar del total muestra "Por cotizar" y el botón
- * para convertirla en cotización.
+ * Tarjeta de una cotización en la lista (mockup de Cotizaciones). La usan las dos listas:
+ * - Trabajador (RF-19): número, estado, cliente, tipo de servicio, fecha y total. Una solicitud
+ *   todavía no tiene productos: muestra "Por cotizar" y el botón para convertirla en cotización.
+ * - Cliente, bandeja (RF-20): número, estado, servicio, fecha y total. Las Nuevas (no leídas) llevan
+ *   el punto azul y el número en negrita; las que aún no le envían muestran "Por cotizar".
  */
 export default function TarjetaCotizacion({ cotizacion, onPress, onCrearCotizacion }: TarjetaCotizacionProps) {
+  const personal = esCotizacionPersonal(cotizacion);
   const esSolicitud = cotizacion.estado === 'solicitada';
-  const cliente = cotizacion.cliente?.nombre ?? 'Cliente sin nombre';
+  // "Por cotizar" en lugar del total. Se decide con el estado y con totalDisponible (lo que
+  // envió el servidor), nunca con las líneas: la lista puede no traerlas.
+  // - Personal: solicitud, o el servidor no envió el total (ve el total de un borrador).
+  // - Cliente: porCotizar del mapper (Solicitada, Borrador o sin total).
+  const sinTotal = personal ? esSolicitud || !cotizacion.totalDisponible : cotizacion.porCotizar;
+  const noLeida = !personal && cotizacion.noLeida && !cotizacion.porCotizar;
+  const cliente = personal ? cotizacion.cliente?.nombre ?? 'Cliente sin nombre' : null;
   const fecha = formatearFecha(cotizacion.creadoEn);
 
+  // Lo que lee el lector de pantalla al llegar a la tarjeta.
+  const etiquetaAccesible = [cotizacion.numero, cliente, noLeida ? 'no leída' : null]
+    .filter((parte) => parte !== null)
+    .join(', ');
+
   return (
-    <View className="mb-bloque rounded-tarjeta border border-borde bg-fondo">
+    <View
+      className={`mb-bloque rounded-tarjeta border bg-fondo ${noLeida ? 'border-primario' : 'border-borde'}`}
+    >
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${cotizacion.numero}, ${cliente}`}
+        accessibilityLabel={etiquetaAccesible}
         className="p-4 active:opacity-80"
       >
         <View className="flex-row items-start justify-between">
-          <Text className="mr-2 flex-1 font-titulo-semi text-lg text-texto">{cotizacion.numero}</Text>
-          <EtiquetaEstadoCotizacion estado={cotizacion.estado} paraPersonal />
+          <View className="mr-2 flex-1 flex-row items-center">
+            {noLeida ? <View className="mr-2 h-3 w-3 rounded-full bg-primario" /> : null}
+            <Text
+              className={`flex-1 text-lg text-texto ${noLeida ? 'font-titulo' : 'font-titulo-semi'}`}
+            >
+              {cotizacion.numero}
+            </Text>
+          </View>
+          <EtiquetaEstadoCotizacion
+            estado={cotizacion.estado}
+            paraPersonal={personal}
+            porCotizar={cotizacion.porCotizar}
+          />
         </View>
 
-        <Text className="mt-1 font-cuerpo-medio text-base text-texto" numberOfLines={1}>
-          {cliente}
-        </Text>
+        {cliente !== null ? (
+          <Text className="mt-1 font-cuerpo-medio text-base text-texto" numberOfLines={1}>
+            {cliente}
+          </Text>
+        ) : null}
         <Text className="font-cuerpo text-sm text-texto-suave" numberOfLines={2}>
           {cotizacion.tipoServicioNombre}
           {cotizacion.descripcion ? ` · ${cotizacion.descripcion}` : ''}
@@ -40,11 +69,11 @@ export default function TarjetaCotizacion({ cotizacion, onPress, onCrearCotizaci
         <Text className="mt-1 font-cuerpo text-sm text-texto-suave">{fecha}</Text>
 
         <Text className="mt-2 font-titulo-semi text-xl text-texto">
-          {esSolicitud ? 'Por cotizar' : formatearPrecio(cotizacion.total)}
+          {sinTotal ? TEXTO_POR_COTIZAR : formatearPrecio(cotizacion.total)}
         </Text>
       </Pressable>
 
-      {esSolicitud && onCrearCotizacion ? (
+      {personal && esSolicitud && onCrearCotizacion ? (
         <Pressable
           onPress={onCrearCotizacion}
           accessibilityRole="button"

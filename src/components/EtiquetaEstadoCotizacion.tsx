@@ -1,6 +1,11 @@
 import { Text, View } from 'react-native';
 
-import { NOMBRE_ESTADO_COTIZACION, type EstadoCotizacion } from '../models/Cotizacion';
+import {
+  esPorCotizar,
+  NOMBRE_ESTADO_COTIZACION,
+  TEXTO_POR_COTIZAR,
+  type EstadoCotizacion,
+} from '../models/Cotizacion';
 import type { EtiquetaEstadoCotizacionProps } from '../types/props.types';
 
 // Colores del mockup de Cotizaciones: Nueva azul, Vista amarilla, Aceptada verde, Rechazada roja.
@@ -15,13 +20,30 @@ const COLOR_ESTADO: Record<EstadoCotizacion, { fondo: string; texto: string }> =
 };
 
 /**
- * Píldora de color con el estado de una cotización. Para el personal, Nueva y Vista se muestran
- * como "Enviada" (RF-19): el trabajador ya la mandó y el cliente todavía puede responder.
+ * Píldora de color con el estado de una cotización.
+ * - Personal: Nueva y Vista se muestran como "Enviada" (RF-19): el trabajador ya la mandó y el
+ *   cliente todavía puede responder.
+ * - Cliente: Solicitada y Borrador, o una cotización que llegó sin total, se muestran como
+ *   "Por cotizar" (J5): aún no le llegan precios.
  */
-export default function EtiquetaEstadoCotizacion({ estado, paraPersonal = false }: EtiquetaEstadoCotizacionProps) {
+export default function EtiquetaEstadoCotizacion({
+  estado,
+  paraPersonal = false,
+  porCotizar: sinPrecios = false,
+}: EtiquetaEstadoCotizacionProps) {
   const enviada = paraPersonal && (estado === 'nueva' || estado === 'vista');
-  const color = enviada ? COLOR_ESTADO.nueva : COLOR_ESTADO[estado];
-  const texto = enviada ? 'Enviada' : NOMBRE_ESTADO_COTIZACION[estado];
+  // Para el cliente: por el estado, o porque la cotización llegó sin total (sinPrecios).
+  const porCotizar = !paraPersonal && (esPorCotizar(estado) || sinPrecios);
+
+  let color = COLOR_ESTADO[estado];
+  let texto = NOMBRE_ESTADO_COTIZACION[estado];
+  if (enviada) {
+    color = COLOR_ESTADO.nueva;
+    texto = 'Enviada';
+  } else if (porCotizar) {
+    color = COLOR_ESTADO.solicitada;
+    texto = TEXTO_POR_COTIZAR;
+  }
 
   return (
     <View className={`rounded-boton px-3 py-1 ${color.fondo}`}>
