@@ -59,7 +59,9 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = la **publishable key** (`sb_publishable_...`). El nombre de
      la variable se conserva por CLAUDE.md, pero su valor es la llave publishable, no la anon legacy.
    - Nunca la llave secreta (`sb_secret_...`) ni la `service_role`.
-7. Decisión pendiente del equipo: en **Authentication > Sign In / Providers > Email**, la opción
+7. Carga inicial del inventario real (F7, RF-32): ejecuta `supabase/seed/inventario_inicial.sql`
+   en el SQL Editor, después de los datos de prueba. Ver la sección 10.
+8. Decisión pendiente del equipo: en **Authentication > Sign In / Providers > Email**, la opción
    "Confirm email". Si queda activa, quien se registra desde la app debe confirmar el correo antes
    de iniciar sesión.
 
@@ -335,7 +337,8 @@ select * from public.productos_catalogo;
 ```
 
 ```sql
--- 9. Comparación: el trabajador sí ve todo. Esperado: 15 productos y 1 cotización del otro cliente
+-- 9. Comparación: el trabajador sí ve todo. Esperado: 15 productos (79 después de la carga de F7:
+--    76 del Excel y 3 de prueba desactivados) y 1 cotización del otro cliente
 select set_config('request.jwt.claims',
   json_build_object('sub', (select id from auth.users where email = 'trabajador@cse.test'),
                     'role', 'authenticated')::text, true);
@@ -388,7 +391,10 @@ La respuesta no debe tener `costo`. `GET /rest/v1/productos` debe devolver `[]`.
   el costo no se copia en las líneas que puede leer el cliente. El descuento del pedido tampoco se
   reparte por producto.
 - **Pedido solo en estado Pendiente** en esta versión (decisión del equipo).
-- **Productos de prueba** (`es_prueba = true`) hasta la carga real del Excel en F7 (RF-32).
+- **Productos de prueba** (`es_prueba = true`) hasta la carga real del Excel en F7 (RF-32). Después
+  de la carga solo quedan, desactivados, los que usa alguna cotización o pedido (sección 10).
+- **Carga del Excel con reglas de prueba.** Duplicados, códigos SIN-COD, marcas y categorías están
+  por confirmar con el cliente (`docs/depuracion-inventario.md`).
 - **Sin protección contra contraseñas filtradas.** Ver "Leaked Password Protection" en la sección 9.
 
 ## 9. Advertencias aceptadas del Security Advisor
@@ -453,3 +459,72 @@ Supabase puede rechazar contraseñas que aparecen en filtraciones conocidas (Hav
 opción no está disponible en el plan gratuito. Queda como límite: Supabase Auth exige una longitud
 mínima de contraseña (6 caracteres por defecto), pero no revisa si la contraseña aparece en
 filtraciones.
+
+## 10. Carga inicial del inventario desde el Excel (F7, RF-32)
+
+El inventario real está en `datos/inventario.xlsx` (una hoja por mes y hojas aparte para HiLook).
+Un script lo depura y genera el SQL; la app no lee el Excel.
+
+### Cómo regenerar el SQL
+
+```bash
+npm install
+npm run depurar-inventario
+```
+
+El script (`scripts/depurar-inventario.mjs`, con la librería `exceljs` como dependencia de
+desarrollo) lee todas las hojas y escribe dos archivos:
+
+- `docs/depuracion-inventario.md`: informe para revisar con el cliente, con hoja y fila de cada
+  caso: productos sin código, códigos repetidos, productos sin precio instalador, inventarios
+  finales negativos de todas las hojas, precios menores que el costo, productos de hojas
+  anteriores que no se cargan y la tabla de marca y categoría para revisar a mano.
+- `supabase/seed/inventario_inicial.sql`: la carga, en una sola transacción.
+
+Se regenera cada vez que cambie el Excel (por ejemplo, una hoja de NOVIEMBRE 26: el script elige
+solo la hoja mensual y la hoja HiLook más recientes) o cuando el cliente confirme una regla
+distinta. Los dos archivos se generan siempre iguales para el mismo Excel; no se editan a mano.
+
+Reglas aplicadas (VALOR DE PRUEBA — [Por confirmar con el cliente] (RF-32)):
+
+- Se cargan las hojas más recientes: OCTUBRE 26 y HILOOK AGOSTO 26 (76 productos).
+- Un código repetido se carga una vez, con la hoja más reciente. Si en esa hoja tiene varias filas
+  (lotes con distinto costo), el inventario es la suma de sus inventarios finales y el costo y los
+  precios son los de la última fila (decisión del equipo en F7).
+- Sin código (o con una palabra genérica como "FUENTES") → SIN-COD-001, SIN-COD-002…
+- Inventario negativo → 0. Precio instalador vacío o 0 → nulo.
+- Marca y categoría se deducen del nombre, del código y de la hoja.
+
+### Cuándo y cómo ejecutarlo en Supabase
+
+Una sola vez, con 001 a 007 y los datos de prueba ya aplicados: **SQL Editor > New query**, pegar
+todo `supabase/seed/inventario_inicial.sql` y **Run**. Debe mostrar el aviso
+`Carga correcta: 76 productos del Excel` y una fila con `activos_excel = 76` y
+`activos_prueba = 0`. Si algo falla, la transacción se deshace y la base queda como estaba.
+
+Qué pasa con los productos que ya existen:
+
+- Si el código ya existe (por ejemplo el DVR de prueba `DS-7204HGHI-M1(C)`), se actualiza esa misma
+  fila con los datos del Excel y queda `es_prueba = false`. Conserva su id, su descripción y su
+  imagen, así que las cotizaciones y pedidos que apuntan a ella siguen igual.
+- Los productos de prueba que no están en el Excel se **desactivan** si una cotización, un pedido o
+  un producto de interés los usa, y se **borran** si nadie los usa.
+- Las cotizaciones y pedidos no cambian: sus líneas guardan copia del código, nombre y precio.
+- El SQL termina comprobando que no hay códigos repetidos, inventarios negativos ni productos de
+  prueba activos. Ejecutarlo otra vez no duplica nada (vuelve a poner los datos del Excel: si
+  alguien cambió precios o inventario en la app, se pierden esos cambios).
+
+CP-07 se conserva: el DVR `DS-7204HGHI-M1(C)` tiene inventario final 2 en OCTUBRE 26, así que la
+consulta 10 de la sección 7 sigue respondiendo "Solo hay 2 unidades disponibles de …" (ahora con el
+nombre del Excel).
+
+Se probó en PostgreSQL 16 local con cotizaciones, pedidos y productos de interés que apuntaban a
+productos de prueba: `docs/evidencias/f7-carga-inventario.txt`.
+
+Comprobación rápida después de ejecutarlo (esperado: 0 filas en la primera y 0 en la segunda):
+
+```sql
+select upper(trim(codigo)), count(*) from public.productos
+where codigo is not null group by 1 having count(*) > 1;
+select count(*) from public.productos where inventario < 0;
+```
