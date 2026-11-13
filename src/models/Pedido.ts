@@ -68,4 +68,9 @@ export interface DatosCompraCarrito {
   lineas: LineaCompra[];
   /** Servicio pedido con la compra; null = sin servicio. */
   servicio: TipoServicio | null;
+  /**
+   * Identificador único (uuid) de esta compra. Se crea una vez y se repite en cada Reintentar:
+   * si la compra ya quedó registrada, el servidor devuelve ese mismo pedido en vez de crear otro.
+   */
+  compraId: string;
 }
