@@ -1,9 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { listarProductos, obtenerProducto } from '../services/productos.service';
+import {
+  crearProducto,
+  desactivarProducto,
+  editarProducto,
+  listarProductos,
+  obtenerProducto,
+} from '../services/productos.service';
 import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
-import type { ProductoSegunRol } from '../models/Producto';
+import type { DatosProducto, ProductoPersonal, ProductoSegunRol } from '../models/Producto';
 import type { ErrorApi } from '../types/api.types';
 import { conAvisoDeConexion, debeReintentar, type ConsultaConConexion } from '../utils/consultas';
 
@@ -74,4 +80,51 @@ export function useProducto(id: string | undefined): ConsultaProductos<ProductoS
     networkMode: 'always',
   });
   return conAvisoDeConexion(consulta, enLinea);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mutaciones del personal (RF-29 a RF-31). networkMode 'always': sin conexión fallan enseguida
+// con "sin_conexion" y no se confirma nada (RNF-08). Al responder el servidor se invalidan las
+// listas de productos de todos los roles y el detalle, para que el catálogo se actualice.
+// ---------------------------------------------------------------------------------------------
+
+/** Crea un producto. El nuevo queda en caché y las listas se vuelven a pedir. */
+export function useCrearProducto() {
+  const clienteQuery = useQueryClient();
+  return useMutation<ProductoPersonal, ErrorApi, DatosProducto>({
+    mutationFn: crearProducto,
+    networkMode: 'always',
+    onSuccess: (producto) => {
+      clienteQuery.setQueryData(claveProducto(producto.id), producto);
+      // ['productos'] sin rol cubre el listado del personal y el del cliente.
+      clienteQuery.invalidateQueries({ queryKey: ['productos'] });
+    },
+  });
+}
+
+/** Edita un producto. Recibe el id y solo los campos que cambiaron en el formulario. */
+export function useEditarProducto() {
+  const clienteQuery = useQueryClient();
+  return useMutation<ProductoPersonal, ErrorApi, { id: string; cambios: Partial<DatosProducto> }>({
+    mutationFn: ({ id, cambios }) => editarProducto(id, cambios),
+    networkMode: 'always',
+    onSuccess: (producto) => {
+      clienteQuery.setQueryData(claveProducto(producto.id), producto);
+      clienteQuery.invalidateQueries({ queryKey: ['productos'] });
+    },
+  });
+}
+
+/** Elimina (desactiva) un producto. Recibe el id. */
+export function useDesactivarProducto() {
+  const clienteQuery = useQueryClient();
+  return useMutation<void, ErrorApi, string>({
+    mutationFn: desactivarProducto,
+    networkMode: 'always',
+    onSuccess: (_resultado, id) => {
+      // El detalle ya no existe para nadie: "Producto no encontrado".
+      clienteQuery.setQueryData(claveProducto(id), null);
+      clienteQuery.invalidateQueries({ queryKey: ['productos'] });
+    },
+  });
 }
