@@ -231,6 +231,13 @@ export interface AccionTarjetaProducto {
   texto: string;
   icono?: NombreIcono;
   onPress: () => void;
+  /** 'primario' (relleno azul, por defecto) o 'peligro' (borde rojo, por ejemplo Eliminar). */
+  variante?: 'primario' | 'peligro';
+  /**
+   * false (por defecto): el botón se oculta si el producto está agotado o no tiene precio, porque
+   * no se puede comprar. true: se muestra siempre (Eliminar en Productos del trabajador).
+   */
+  siempreVisible?: boolean;
 }
 
 /** Tarjeta de producto del catálogo (mockup de Catálogo, RF-05, RF-09). */
@@ -246,10 +253,38 @@ export interface TarjetaProductoProps {
   /** Unidades disponibles. Con 0 se muestra la etiqueta "Agotado". */
   inventario: number;
   imagenUrl: string | null;
-  /** Abre el detalle del producto. */
+  /** Abre el detalle del producto (o su edición, en Productos del trabajador). */
   onPress: () => void;
+  /** Texto para el lector de pantalla al pulsar la tarjeta; por defecto "<nombre>, ver detalle". */
+  etiquetaAccesible?: string;
+  /** Contenido opcional bajo el precio, por ejemplo los precios del personal y las marcas de revisión. */
+  contenidoExtra?: ReactNode;
   /** Botón opcional; no se muestra si el producto está agotado o no tiene precio. */
   accion?: AccionTarjetaProducto;
+}
+
+/** Marcas de revisión de un producto en Productos del trabajador ("Sin precio instalador"...). */
+export interface MarcasRevisionProps {
+  motivos: string[];
+}
+
+/** Selector de una opción en una ventana (Categoría y Marca del formulario de producto). */
+export interface SelectorOpcionesProps<T extends string> {
+  etiqueta: string;
+  opciones: readonly OpcionSegmentada<T>[];
+  /** Valor elegido. */
+  valor: T;
+  onCambiar: (valor: T) => void;
+}
+
+/** Advertencia naranja bajo un campo del formulario de producto (no impide guardar). */
+export interface AdvertenciaCampoProps {
+  texto: string;
+}
+
+/** Formulario de producto: null para crear; el producto cargado para editar. */
+export interface FormularioProductoProps {
+  producto: ProductoPersonal | null;
 }
 
 /** Etiqueta verde "Disponibles: N" o roja "Agotado". */

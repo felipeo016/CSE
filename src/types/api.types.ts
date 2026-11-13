@@ -183,6 +183,28 @@ export interface ProductoPersonalApi {
   actualizado_en: string;
 }
 
+/**
+ * Cuerpo de POST y PATCH /rest/v1/productos (RF-29, RF-30). Solo lo envía el personal (RLS).
+ * id, es_prueba y las fechas no se envían: los pone el servidor.
+ */
+export interface ProductoCuerpoApi {
+  codigo: string | null;
+  nombre: string;
+  descripcion: string | null;
+  marca: MarcaApi;
+  categoria: CategoriaApi;
+  costo: number;
+  precio_instalador: number | null;
+  precio_cliente_final: number;
+  inventario: number;
+  imagen_url: string | null;
+}
+
+/** Cuerpo de PATCH /rest/v1/productos para eliminar un producto: se desactiva (RF-31). */
+export interface ProductoDesactivarApi {
+  activo: false;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Parámetros del negocio (sección 5)
 // ---------------------------------------------------------------------------------------------

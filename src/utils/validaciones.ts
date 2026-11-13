@@ -52,22 +52,73 @@ export function contrasenaMinima(valor: string): ResultadoValidacion {
     : null;
 }
 
-/** Número entero, sin decimales ni texto (por ejemplo, una cantidad). */
-export function numeroEntero(valor: string): ResultadoValidacion {
-  const texto = valor.trim();
-  if (texto === '' || Number.isNaN(Number(texto))) {
-    return 'Ingrese un valor numérico';
-  }
-  return Number.isInteger(Number(texto)) ? null : 'Ingresa un número entero, sin decimales';
+// Número escrito a mano: dígitos con "-" opcional y, si acaso, hasta dos decimales con punto o
+// coma ("79000", "79000,5", "-3"). No pasan "abc", "1e3", "0x10" ni "79.000": Number() los
+// aceptaría (como 1000, 16 y 79), pero no son lo que una persona escribe como número.
+const FORMATO_NUMERO = /^-?\d+([.,]\d{1,2})?$/;
+
+// Número con puntos de miles: "79.000", "1.250.000".
+const FORMATO_PUNTOS_DE_MILES = /^-?\d{1,3}(\.\d{3})+$/;
+
+/** Convierte el texto de un campo numérico ya validado en número ("79000,5" → 79000.5). */
+export function textoANumero(valor: string): number {
+  return Number(valor.trim().replace(',', '.'));
 }
 
-/** Número mayor o igual que cero (por ejemplo, un precio o un inventario). */
-export function numeroNoNegativo(valor: string): ResultadoValidacion {
+/** Número entero, sin decimales ni texto (por ejemplo, un inventario). */
+export function numeroEntero(valor: string): ResultadoValidacion {
   const texto = valor.trim();
-  if (texto === '' || Number.isNaN(Number(texto))) {
+  if (!FORMATO_NUMERO.test(texto)) {
     return 'Ingrese un valor numérico';
   }
-  return Number(texto) < 0 ? 'El valor no puede ser negativo' : null;
+  return /[.,]/.test(texto) ? 'Ingresa un número entero, sin decimales' : null;
+}
+
+/** Número mayor o igual que cero (por ejemplo, un precio o un costo). */
+export function numeroNoNegativo(valor: string): ResultadoValidacion {
+  const texto = valor.trim();
+  if (!FORMATO_NUMERO.test(texto)) {
+    return 'Ingrese un valor numérico';
+  }
+  return textoANumero(texto) < 0 ? 'El valor no puede ser negativo' : null;
+}
+
+/** Mayor valor en pesos que acepta la tabla productos (numeric(12, 2)). */
+export const VALOR_MAXIMO_PESOS = 9_999_999_999;
+/** Mayor inventario que acepta la tabla productos (integer). */
+export const INVENTARIO_MAXIMO = 2_147_483_647;
+
+/**
+ * Valor en pesos de un producto: costo o precio (RF-29, RNF-15). Obligatorio, numérico (hasta
+ * dos decimales) y no negativo. Si se escribe con puntos de miles se explica cómo escribirlo.
+ * primerError devuelve el primer mensaje que aparezca, en el orden de la lista.
+ */
+export function valorEnPesos(valor: string): ResultadoValidacion {
+  const texto = valor.trim();
+  return primerError(
+    FORMATO_PUNTOS_DE_MILES.test(texto) ? 'Escribe el valor sin puntos de miles, por ejemplo 79000' : null,
+    numeroNoNegativo(texto),
+    textoANumero(texto) > VALOR_MAXIMO_PESOS ? 'El valor es demasiado grande' : null,
+  );
+}
+
+/** Inventario de un producto (RF-29, RNF-15): obligatorio, entero y no negativo. */
+export function inventarioValido(valor: string): ResultadoValidacion {
+  const texto = valor.trim();
+  // Con texto no numérico textoANumero da NaN y las comparaciones son falsas: queda el mensaje de numeroEntero.
+  const numero = textoANumero(texto);
+  return primerError(
+    numeroEntero(texto),
+    numero < 0 ? 'El inventario no puede ser negativo' : null,
+    numero > INVENTARIO_MAXIMO ? 'El valor es demasiado grande' : null,
+  );
+}
+
+/** Dirección de una imagen: opcional, pero si se escribe debe empezar por https://. */
+export function urlImagenValida(valor: string): ResultadoValidacion {
+  const texto = valor.trim();
+  if (texto === '') return null;
+  return /^https:\/\/\S+$/i.test(texto) ? null : 'Ingresa una dirección que empiece por https://';
 }
 
 /** Texto exacto de RF-10 cuando se pide más de lo que hay en inventario. */
