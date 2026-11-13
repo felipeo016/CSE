@@ -193,6 +193,9 @@ const TIPO_POR_HINT: Record<string, ErrorApi['tipo']> = {
   PRODUCTO_NO_DISPONIBLE: 'conflicto',
   INVENTARIO_INSUFICIENTE: 'conflicto',
   ULTIMO_ADMINISTRADOR: 'conflicto',
+  // Edge Function admin-usuarios (F8).
+  CORREO_REGISTRADO: 'conflicto',
+  USUARIO_NO_ENCONTRADO: 'validacion',
 };
 
 function crearError(tipo: ErrorApi['tipo'], mensaje: string, codigo?: string): ErrorApi {

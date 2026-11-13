@@ -49,6 +49,27 @@ export async function listarPedidosCliente(clienteId: string): Promise<Pedido[]>
 }
 
 /**
+ * Cuántos pedidos se registraron en un mes, para el Panel general (solo personal; la usa el
+ * administrador). La RLS le entrega al personal los pedidos de todos los clientes; un cliente solo
+ * contaría los suyos, pero el panel no se le muestra.
+ * Solo se pide el id (nada de dinero ni líneas). El mes va en hora de Colombia (UTC−5, sin cambio
+ * de horario), igual que ventas_y_ganancias: desde el día 1 a las 00:00 hasta antes del mes siguiente.
+ * @param mes "AAAA-MM"
+ */
+export async function contarPedidosDelMes(mes: string): Promise<number> {
+  const [anio, numeroMes] = mes.split('-').map(Number);
+  const siguiente = numeroMes === 12 ? `${anio + 1}-01` : `${anio}-${String(numeroMes + 1).padStart(2, '0')}`;
+  const respuesta = await api.get<{ id: string }[]>(RUTA_PEDIDOS, {
+    params: {
+      select: 'id',
+      // and=(...): las dos condiciones sobre la misma columna.
+      and: `(creado_en.gte.${mes}-01T00:00:00-05:00,creado_en.lt.${siguiente}-01T00:00:00-05:00)`,
+    },
+  });
+  return respuesta.data.length;
+}
+
+/**
  * Busca un pedido por id con sus líneas (Detalle de pedido). Devuelve null si no existe, si el id
  * no tiene formato válido o si es de otro cliente (la base no se lo entrega).
  */

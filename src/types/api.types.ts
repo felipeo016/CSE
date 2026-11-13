@@ -500,3 +500,70 @@ export interface UbicacionCuerpoApi {
   direccion: string;
   referencia: string | null;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Usuarios y roles (RF-34): Edge Function admin-usuarios (/functions/v1/admin-usuarios)
+// La lista sale de GET /rest/v1/perfiles (RLS: el administrador ve todos) con PerfilApi.
+// Crear, editar y activar o desactivar pasan por la función, que tiene la llave secreta.
+// Responde la fila de perfiles (PerfilApi) y los errores con el formato de PostgREST.
+// ---------------------------------------------------------------------------------------------
+
+/** Crear un usuario de Auth con su perfil. La contraseña es temporal: el usuario puede cambiarla. */
+export interface UsuarioCrearCuerpoApi {
+  accion: 'crear';
+  correo: string;
+  contrasena: string;
+  nombre: string;
+  /** Solo dígitos (7 a 15). */
+  telefono: string;
+  rol: RolApi;
+}
+
+/** Editar nombre, teléfono y rol. El correo no se cambia. */
+export interface UsuarioEditarCuerpoApi {
+  accion: 'editar';
+  id: string;
+  nombre: string;
+  telefono: string;
+  rol: RolApi;
+}
+
+/** Activar o desactivar (también bloquea o desbloquea el inicio de sesión en Auth). */
+export interface UsuarioEstadoCuerpoApi {
+  accion: 'cambiar_estado';
+  id: string;
+  activo: boolean;
+}
+
+export type UsuarioAdminCuerpoApi =
+  | UsuarioCrearCuerpoApi
+  | UsuarioEditarCuerpoApi
+  | UsuarioEstadoCuerpoApi;
+
+// ---------------------------------------------------------------------------------------------
+// Panel general (RF-35): RPC ventas_y_ganancias (solo administrador)
+// ---------------------------------------------------------------------------------------------
+
+/** Cuerpo de POST /rest/v1/rpc/ventas_y_ganancias. Fechas "AAAA-MM-DD", ambas incluidas. */
+export interface VentasCuerpoApi {
+  desde: string;
+  hasta: string;
+}
+
+/**
+ * Una fila por producto. Las ventas son precio de venta × unidades; la ganancia es
+ * (precio de venta − costo guardado al vender) × unidades (migración 009). PostgREST entrega
+ * bigint y numeric como números JSON.
+ */
+export interface VentaProductoApi {
+  producto_id: string;
+  codigo: string | null;
+  nombre: string;
+  unidades_instalador: number;
+  ventas_instalador: number;
+  unidades_final: number;
+  ventas_final: number;
+  unidades_total: number;
+  ventas_total: number;
+  ganancia: number;
+}

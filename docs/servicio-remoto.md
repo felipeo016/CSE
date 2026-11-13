@@ -41,9 +41,15 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    8. `supabase/migrations/008_compras_y_citas.sql` (compra sin duplicados: identificador de
       compra en `registrar_pedido_carrito`; citas sin repetir día y franja ni en una franja de hoy
       que ya pasó; ver la sección 5). Va en una transacción y se puede ejecutar dos veces.
-   9. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
+   9. `supabase/migrations/009_costo_ventas.sql` (costo histórico de las ventas: tabla
+      `pedido_lineas_costo`, trigger que guarda el costo de cada línea de pedido y
+      `ventas_y_ganancias` con ese costo; prompt F8, ver la sección 5). Va en una transacción y se
+      puede ejecutar dos veces.
+   10. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
 
-   Si el proyecto ya tenía 001 a 007 y los datos de prueba, basta con ejecutar 008.
+   Si el proyecto ya tenía 001 a 007 y los datos de prueba, basta con ejecutar 008. Si ya tenía
+   001 a 008, basta con ejecutar 009: debe terminar con el aviso
+   `Costo guardado para todas las líneas de pedido (N).`
 
    Si 008 se detiene con "Hay citas programadas repetidas", no cambió nada. Esta consulta muestra
    cuáles son; el equipo decide cuál cancelar (por ejemplo, desde Citas del trabajador) y vuelve a
@@ -77,7 +83,9 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    en el SQL Editor, después de los datos de prueba. Ver la sección 10.
 8. Decisión pendiente del equipo: en **Authentication > Sign In / Providers > Email**, la opción
    "Confirm email". Si queda activa, quien se registra desde la app debe confirmar el correo antes
-   de iniciar sesión.
+   de iniciar sesión. (Los usuarios que crea el administrador desde la app quedan confirmados.)
+9. Usuarios y roles (F8, RF-34): publica la Edge Function `admin-usuarios` y configura su secreto
+   siguiendo la sección 11.
 
 ## 3. Llaves y encabezados
 
@@ -137,6 +145,8 @@ El teléfono debe tener solo dígitos (7 a 15); si no, el registro falla en el s
 | Pedidos (RF-14) | `GET /rest/v1/pedidos?select=*,pedido_lineas(*)&order=creado_en.desc` |
 | Ubicaciones (RF-26) | `GET`, `POST /rest/v1/ubicaciones` |
 | Citas (RF-27, RF-28) | `GET`, `POST /rest/v1/citas`; el personal `PATCH /rest/v1/citas?id=eq.<id>` con `{"estado": ...}` |
+| Historial de un cliente para el personal (RF-33) | Los mismos `GET` de ubicaciones, cotizaciones, pedidos y citas con `cliente_id=eq.<id>` |
+| Usuarios y roles (RF-34) | `GET /rest/v1/perfiles?select=...&order=nombre` (RLS: el administrador ve todos; los demás, solo el suyo). Crear, editar y activar o desactivar: Edge Function `admin-usuarios` |
 
 Notas para quien programe los servicios:
 
@@ -166,7 +176,7 @@ Todas con `POST` y cuerpo JSON con los nombres exactos de los parámetros.
 | `aceptar_cotizacion` (RF-22) | `{ "id": "..." }` | El pedido creado | Cliente dueño |
 | `rechazar_cotizacion` (RF-22) | `{ "id": "..." }` | La cotización | Cliente dueño |
 | `marcar_cotizacion_vista` (RF-21) | `{ "id": "..." }` | La cotización | Cliente dueño |
-| `ventas_y_ganancias` (RF-35) | `{ "desde": "2026-10-01", "hasta": "2026-10-31" }` | Una fila por producto | Administrador |
+| `ventas_y_ganancias` (RF-35) | `{ "desde": "2026-10-01", "hasta": "2026-10-31" }` (fechas en hora de Colombia, ambas incluidas; el Panel general envía el primer y el último día del mes) | Una fila por producto, también los no vendidos en cero: unidades y ventas a instalador y a final, totales y `ganancia` = (precio de venta − costo guardado al vender) × unidades (desde 009) | Administrador |
 
 Errores: PostgREST responde HTTP 400 con `{ "message", "hint", "details", "code" }`. `message` es
 el texto para el usuario y `hint` un código fijo para decidir qué hacer en la app:
@@ -186,15 +196,35 @@ el texto para el usuario y `hint` un código fijo para decidir qué hacer en la 
 | `COMPRA_YA_REGISTRADA` (008) | Tu compra anterior ya quedó registrada como PED-00012. Revísala en Mis pedidos. (`details` trae `{"pedido_id","numero"}`) |
 | `CITA_REPETIDA` (008) | Ya tienes una cita programada en ese día y franja. |
 | `FRANJA_PASADA` (008) | Esa franja ya pasó. Elige otra franja u otro día (el mismo texto que muestra la app) |
+| `CORREO_REGISTRADO` (F8, `admin-usuarios`) | Ya existe un usuario con ese correo |
+| `USUARIO_NO_ENCONTRADO` (F8, `admin-usuarios`) | Usuario no encontrado |
 
 Otros códigos útiles: `23505` (dato duplicado, por ejemplo el código de producto) y `42501`
 (la política RLS no permite la operación).
 
 ### Edge Functions (`/functions/v1`)
 
-No se usan todavía. Quedan para lo que necesite la llave secreta y no pueda hacerse desde la app,
-por ejemplo que el administrador cree usuarios de Auth (RF-34, prompt F8):
-`POST /functions/v1/<nombre>` con los mismos encabezados.
+Una sola, `admin-usuarios` (F8, RF-34), para lo que necesita la llave secreta y no puede hacerse
+desde la app: crear usuarios de Auth. Se llama con los mismos encabezados de siempre (`apikey` con
+la publishable y `Authorization: Bearer <access_token>` del administrador), desde la misma
+instancia de Axios. Código: `supabase/functions/admin-usuarios/index.ts`. Cómo publicarla: sección 11.
+
+`POST /functions/v1/admin-usuarios`
+
+| Acción | Cuerpo | Qué hace |
+| --- | --- | --- |
+| Crear | `{ "accion": "crear", "correo", "contrasena", "nombre", "telefono", "rol" }` | Crea el usuario en Auth ya confirmado (contraseña temporal de 6 caracteres o más). El trigger `al_crear_usuario` le crea perfil cliente y ficha de cliente; si el rol es trabajador o administrador, la función pone el rol y borra esa ficha (como la parte 2 del seed). Si algo falla después de crear el usuario, lo borra para no dejarlo a medias. |
+| Editar | `{ "accion": "editar", "id", "nombre", "telefono", "rol" }` | Cambia nombre, teléfono y rol (el correo no se cambia). Si pasa a cliente y no tiene ficha, le crea una (tipo final) o reutiliza la suya. |
+| Activar o desactivar | `{ "accion": "cambiar_estado", "id", "activo": true \| false }` | Cambia `perfiles.activo` y bloquea (o desbloquea) el inicio de sesión en Auth. Si Auth falla, el perfil vuelve a como estaba. |
+
+Responde la fila de `perfiles` como quedó (201 al crear, 200 en lo demás). Reglas que revisa:
+quien llama debe ser administrador activo (si no, 403 "Acceso no autorizado"; con el token vencido,
+401 y la app lo renueva una vez); nadie cambia su propio rol ni se desactiva; teléfono de 7 a 15
+dígitos (los espacios se quitan); correo con formato válido y no repetido. Dejar cero
+administradores activos lo rechaza el trigger de 002 y la función devuelve su error tal cual
+(`ULTIMO_ADMINISTRADOR`). Los errores salen con el formato de PostgREST
+(`{ "message", "hint", "code", "details" }`), así el interceptor de `api.ts` los traduce igual que
+los de las RPC.
 
 ## 5. Seguridad aplicada en el servidor
 
@@ -247,6 +277,28 @@ por ejemplo que el administrador cree usuarios de Auth (RF-34, prompt F8):
     franja ya empezó sigue funcionando.
   - No es SECURITY DEFINER: busca con los permisos de quien agenda (el cliente ve sus citas). Nadie
     puede llamarla desde `/rest/v1/rpc`.
+- **Costo histórico de las ventas (migración 009, decisión del equipo).** Antes la ganancia usaba
+  el costo actual del producto: si el trabajador cambiaba el costo, cambiaban las ganancias de
+  meses pasados. Ahora:
+  - La tabla `pedido_lineas_costo` guarda el costo unitario de cada línea de pedido en el momento
+    de la venta. Va aparte de `pedido_lineas` porque el cliente lee sus líneas de pedido y nunca
+    debe recibir el costo (RNF-06).
+  - RLS: solo la lee el personal activo. Nadie la escribe desde la app (`authenticated` solo tiene
+    SELECT; `anon`, nada).
+  - El trigger `pedido_lineas_10_guardar_costo` (función `pedido_lineas_guardar_costo`, SECURITY
+    DEFINER, sin EXECUTE para `anon` ni `authenticated`, como las de 004) la llena al insertar cada
+    línea, tanto en la compra del carrito como al aceptar una cotización.
+  - Las líneas anteriores a 009 se llenaron con el costo que tenía el producto al ejecutar 009 (el
+    de antes no se había guardado).
+  - `ventas_y_ganancias` calcula `(precio de venta − costo guardado) × unidades`, con la misma firma
+    y las mismas columnas que antes.
+- **Administración de usuarios (F8).** La lista sale de `perfiles` (RLS: el administrador ve
+  todos). Crear, editar y activar o desactivar pasa por la Edge Function `admin-usuarios`, que
+  usa la llave secreta (sección 11). Con esa llave las peticiones entran como `service_role`:
+  los triggers de protección de la app (`perfiles_proteger`) no aplican, por eso la función repite
+  adentro que nadie cambia su propio rol ni se desactiva. El trigger del último administrador sí
+  aplica. Desactivar también bloquea el inicio de sesión en Auth (`ban_duration`), así un usuario
+  desactivado no puede entrar (RF-34) además de no ver nada (RLS).
 - **Personal:** crea y edita productos y clientes, elabora y envía cotizaciones y cambia el estado
   de las citas (Programada → Realizada o Cancelada).
 - **Administrador:** además cambia roles y activa o desactiva perfiles. Nadie cambia su propio rol
@@ -265,6 +317,8 @@ por ejemplo que el administrador cree usuarios de Auth (RF-34, prompt F8):
   es la única puerta: devuelve solo columnas sin costo, solo productos activos y solo a usuarios con
   perfil activo. `anon` no puede usar ni la vista ni la función.
 - Las líneas de cotización y de pedido copian nombre, código y precio de venta, nunca el costo.
+- El costo de cada venta (009) está en `pedido_lineas_costo`, que el cliente no puede leer: con su
+  sesión la tabla devuelve 0 filas aunque vea sus líneas de pedido.
 - `ventas_y_ganancias` solo responde al administrador.
 
 **Cómo se verificó.** Antes de entregar, los cuatro archivos se ejecutaron en un PostgreSQL 16 local
@@ -431,9 +485,13 @@ La respuesta no debe tener `costo`. `GET /rest/v1/productos` debe devolver `[]`.
 - **Los cambios se ven al recargar, no en tiempo real.** Una cotización enviada aparece en la
   bandeja del cliente al deslizar para recargar o al volver a la pantalla (RF-20). No se usa
   Supabase Realtime.
-- **Ganancias con el costo actual.** `ventas_y_ganancias` usa el costo vigente del producto, porque
-  el costo no se copia en las líneas que puede leer el cliente. El descuento del pedido tampoco se
-  reparte por producto.
+- **Ganancias con el costo al vender, desde 009.** Cada línea de pedido guarda su costo en
+  `pedido_lineas_costo`. Los pedidos anteriores a 009 quedaron con el costo que tenía el producto
+  al ejecutar 009 (el costo de antes no se había guardado). El descuento del pedido no se reparte
+  por producto y el servicio (instalación o mantenimiento) no entra en la ganancia por producto.
+- **Usuarios creados por el administrador.** La contraseña temporal la entrega el administrador
+  en persona; la app no envía correos ni obliga a cambiarla en el primer inicio de sesión. El
+  correo de una cuenta no se cambia desde la app.
 - **Pedido solo en estado Pendiente** en esta versión (decisión del equipo).
 - **Productos de prueba** (`es_prueba = true`) hasta la carga real del Excel en F7 (RF-32). Después
   de la carga solo quedan, desactivados, los que usa alguna cotización o pedido (sección 10).
@@ -456,6 +514,19 @@ corrige 4 advertencias. Las otras 10 se aceptan a propósito y se explican abajo
 parámetros, así que sigue siendo una sola función expuesta), y `citas_validar_franja` no es
 SECURITY DEFINER, tiene `search_path` fijo y no se puede ejecutar desde la API. Después de
 ejecutar 008 hay que revisar el Security Advisor y confirmar esa cuenta.
+
+`009_costo_ventas.sql` (F8) **tampoco cambia la cuenta** (se espera 0 errores y 13 advertencias):
+
+| Objeto de 009 | Qué revisa el Security Advisor | Por qué no suma |
+| --- | --- | --- |
+| Tabla `pedido_lineas_costo` | "RLS Disabled in Public" (error) y "RLS Enabled No Policy" | Tiene RLS activa y una política de lectura solo para el personal. `anon` no tiene ningún permiso y `authenticated` solo SELECT. |
+| Función `pedido_lineas_guardar_costo` | "Function Search Path Mutable" y "SECURITY DEFINER ejecutable por anon/authenticated" | Tiene `search_path = ''` y se le quita EXECUTE a `public`, `anon` y `authenticated` (igual que las de 004); solo corre como trigger. |
+| `ventas_y_ganancias` (reemplazada) | La misma advertencia aceptada de siempre | Es la misma función (misma firma); sigue en la lista de aceptadas con el mismo control adentro. |
+
+La Edge Function `admin-usuarios` no aparece en el Security Advisor (revisa la base, no las
+funciones). Su protección: verifica el token con Auth, exige administrador activo en `perfiles` y
+la llave secreta vive solo en los secretos de Supabase (sección 11). Después de ejecutar 009 hay
+que revisar el Security Advisor y confirmar 0 errores y 13 advertencias.
 
 ### Corregidas con 004: funciones de trigger
 
@@ -494,7 +565,7 @@ ejecutar ninguna (002 y 003 le quitan EXECUTE).
 | `rechazar_cotizacion` | El cliente rechaza la cotización (RF-22). No tiene permiso de editar cotizaciones. | Solo el dueño. Solo en estado nueva o vista y sin vencer. |
 | `marcar_cotizacion_vista` | El cliente abre el detalle (RF-21). | Solo el dueño. Solo pasa de nueva a vista, o a vencida si ya venció. Desde 007, una cotización en solicitada o borrador responde "Cotización no encontrada" en vez de devolverse con sus totales. |
 | `cotizaciones_del_cliente` | Fuente de la vista `cotizaciones_cliente` (007). El cliente ya no puede leer en la tabla las cotizaciones en preparación, pero debe verlas en su bandeja como "Por cotizar". | Solo filas de `mi_cliente_id()` (personal o perfil inactivo: cero filas). En solicitada o borrador devuelve el estado "solicitada", el dinero e incluye_servicio en null y las líneas vacías. Nunca devuelve costo. Probada en PostgreSQL local (`docs/evidencias/f-borrador-oculto.txt`). |
-| `ventas_y_ganancias` | El administrador consulta el panel (RF-35). Necesita leer el costo. | Responde solo si `rol_actual()` es administrador; si no, "Acceso no autorizado". |
+| `ventas_y_ganancias` | El administrador consulta el panel (RF-35). Necesita leer el costo guardado de cada venta (`pedido_lineas_costo`, 009). | Responde solo si `rol_actual()` es administrador activo; si no, "Acceso no autorizado" (también al trabajador). Rechaza fechas al revés. Probada en PostgreSQL local (`docs/evidencias/f8-admin.txt`). |
 | `catalogo_productos` | Fuente de la vista `productos_catalogo`. El cliente no puede leer la tabla `productos` (RNF-06). | Nunca devuelve `costo`. Solo productos activos y solo a usuarios con perfil activo. Devuelve únicamente el precio del tipo del cliente. |
 | `rol_actual` | La usan las políticas RLS en cada consulta. Si respetara la RLS de `perfiles`, se llamaría a sí misma sin fin. | Solo devuelve el rol de quien llama (`auth.uid()`), y null si el perfil está inactivo. |
 | `mi_cliente_id` | La usan las políticas RLS y las RPC. | Solo devuelve el `cliente_id` de quien llama, si es cliente activo. |
@@ -578,3 +649,124 @@ select upper(trim(codigo)), count(*) from public.productos
 where codigo is not null group by 1 having count(*) > 1;
 select count(*) from public.productos where inventario < 0;
 ```
+
+
+## 11. Usuarios y roles: Edge Function `admin-usuarios` y migración 009 (F8)
+
+Orden: primero 009 en el SQL Editor (sección 2, paso 9), después la llave secreta, el secreto y
+la función. La app ya llama a `/functions/v1/admin-usuarios`; mientras la función no esté
+publicada, Crear usuario, Guardar cambios y Activar/Desactivar responden con error (la lista de
+usuarios sí carga, porque sale de `perfiles`).
+
+### 11.1 La llave secreta (nunca en la app)
+
+1. En el panel: **Project Settings > API Keys**, pestaña de las llaves nuevas (**Publishable and
+   secret API keys**), sección **Secret keys**.
+2. Pulsa **Add new secret key**, ponle un nombre que diga para qué es (por ejemplo
+   `admin_usuarios`) y créala. Así, si algún día se filtra, se borra solo esa sin tocar las demás.
+3. Pulsa el ojo para verla y cópiala: empieza por `sb_secret_`.
+
+Esta llave salta todas las políticas RLS. **No va en el `.env`, ni en el código, ni en Git, ni en
+la app.** Solo se pega en el secreto del paso siguiente.
+
+### 11.2 El secreto `CSE_LLAVE_SECRETA`
+
+1. **Edge Functions > Secrets** (en el menú izquierdo, dentro de Edge Functions; en paneles
+   anteriores: **Project Settings > Edge Functions**).
+2. **Add new secret**: Name `CSE_LLAVE_SECRETA` (exacto, en mayúsculas), Value la llave
+   `sb_secret_...` y **Save**.
+
+El nombre no puede empezar por `SUPABASE_` (Supabase reserva ese prefijo). `SUPABASE_URL` ya
+existe sola en todas las funciones; no hay que crearla.
+
+### 11.3 Publicar la función desde el panel (lo más simple en Windows, sin instalar nada)
+
+1. **Edge Functions > Functions > Deploy a new function > Via Editor**.
+2. Nombre de la función: `admin-usuarios` (exacto: es parte de la URL que llama la app).
+3. Borra el código de ejemplo del editor, abre `supabase/functions/admin-usuarios/index.ts` en VS
+   Code, copia **todo** el archivo y pégalo en el editor del panel.
+4. **Deploy function** y espera el aviso de que quedó publicada.
+5. En la página de la función, pestaña **Details** (o **Settings**), apaga **Verify JWT with
+   legacy secret** ("Enforce JWT Verification" en paneles anteriores) y guarda.
+   - Por qué: la función ya verifica el token por su cuenta (se lo pregunta a Auth con
+     `/auth/v1/user`) y además exige un administrador activo en `perfiles`. La verificación del
+     panel solo sirve con la llave JWT antigua del proyecto; apagarla evita rechazos falsos si el
+     proyecto usa las llaves JWT nuevas. Sin un token válido de administrador, la función responde
+     401 o 403 igual.
+6. Para cambiar el código después: abre la función, pestaña **Code**, pega la versión nueva y
+   **Deploy updates**. Cambiar el valor del secreto no exige volver a publicar.
+
+### 11.4 Alternativa: Supabase CLI (sin instalarla en el proyecto)
+
+En una terminal en la carpeta del proyecto (`<ref>` es la parte de la URL antes de
+`.supabase.co`):
+
+```bash
+npx supabase login
+```
+
+```bash
+npx supabase link --project-ref <ref>
+```
+
+```bash
+npx supabase secrets set CSE_LLAVE_SECRETA=sb_secret_...
+```
+
+```bash
+npx supabase functions deploy admin-usuarios --no-verify-jwt
+```
+
+`--no-verify-jwt` es lo mismo que el paso 5 de 11.3. Si el último comando pide Docker, abre Docker
+Desktop y repítelo, o usa el panel (11.3). No escribas la llave en archivos ni la subas a Git: el
+comando `secrets set` la guarda directo en Supabase.
+
+### 11.5 Comprobar
+
+1. **Edge Functions > admin-usuarios > Logs**: cada llamada aparece con su código (201, 200, 400,
+   401, 403). Los `console.error` de la función (por ejemplo "Falta el secreto
+   CSE_LLAVE_SECRETA") salen aquí.
+2. En la app, con `admin@cse.test`: Drawer > **Usuarios y roles** > **Crear usuario**. Un
+   trabajador nuevo debe aparecer en la lista y en **Authentication > Users**, y en la tabla
+   `clientes` no debe quedar una ficha con su correo.
+3. Consultas en el SQL Editor después de ejecutar 009 (cada bloque por separado):
+
+```sql
+-- 12. (009) Toda línea de pedido tiene su costo guardado. Esperado: 0
+select count(*) from public.pedido_lineas l
+where not exists (select 1 from public.pedido_lineas_costo c where c.pedido_linea_id = l.id);
+```
+
+```sql
+-- 13. (009) Como cliente, los costos guardados no se ven. Esperado: 0
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select id from auth.users where email = 'cliente@cse.test'),
+                    'role', 'authenticated')::text, true);
+set local role authenticated;
+select count(*) from public.pedido_lineas_costo;
+```
+
+```sql
+-- 14. (009) Ganancia por producto de un mes como administrador. Compárala a mano con
+--     (precio_unitario − costo_unitario) × cantidad de la consulta 15.
+select set_config('request.jwt.claims',
+  json_build_object('sub', (select id from auth.users where email = 'admin@cse.test'),
+                    'role', 'authenticated')::text, true);
+set local role authenticated;
+select codigo, nombre, unidades_instalador, ventas_instalador, unidades_final, ventas_final, ganancia
+from public.ventas_y_ganancias('2026-11-01', '2026-11-30') where unidades_total > 0;
+```
+
+```sql
+-- 15. (009) Las líneas del mes con su costo guardado (como postgres)
+select pe.numero, pe.tipo_cliente, l.nombre_producto, l.precio_unitario, l.cantidad, c.costo_unitario,
+       (l.precio_unitario - c.costo_unitario) * l.cantidad as ganancia
+from public.pedido_lineas l
+join public.pedidos pe on pe.id = l.pedido_id
+join public.pedido_lineas_costo c on c.pedido_linea_id = l.id
+where (pe.creado_en at time zone 'America/Bogota')::date between '2026-11-01' and '2026-11-30'
+order by pe.numero;
+```
+
+Se probó en PostgreSQL 16 local (001 a 009, 009 dos veces) y la lógica de la función con un
+Supabase simulado: `docs/evidencias/f8-admin.txt`.

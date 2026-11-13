@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { listarPedidosCliente, obtenerPedido, registrarPedidoCarrito } from '../services/pedidos.service';
+import {
+  contarPedidosDelMes,
+  listarPedidosCliente,
+  obtenerPedido,
+  registrarPedidoCarrito,
+} from '../services/pedidos.service';
 import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
 import type { DatosCompraCarrito, Pedido } from '../models/Pedido';
@@ -38,6 +43,47 @@ export function usePedidosCliente(): ConsultaConConexion<Pedido[]> {
     queryKey: clavePedidosCliente(clienteId),
     queryFn: () => listarPedidosCliente(clienteId ?? ''),
     enabled: clienteId !== null,
+    staleTime: STALE_TIME_PEDIDOS_MS,
+    gcTime: GC_TIME_PEDIDOS_MS,
+    retry: debeReintentar,
+    networkMode: 'always',
+  });
+  return conAvisoDeConexion(consulta, enLinea);
+}
+
+/**
+ * Pedidos de un cliente elegido, para el trabajador y el administrador (historial del Detalle de
+ * cliente, RF-33; F8). Usa el mismo servicio y la misma queryKey que Mis pedidos: la RLS le
+ * entrega al personal los pedidos de cualquier cliente y el filtro cliente_id deja solo los de ese.
+ */
+export function usePedidosDeCliente(clienteId: string | undefined): ConsultaConConexion<Pedido[]> {
+  const hayUsuario = useSesionStore((estado) => estado.usuario !== null);
+  const enLinea = useEnLinea();
+  const consulta = useQuery<Pedido[], ErrorApi>({
+    queryKey: clavePedidosCliente(clienteId ?? null),
+    queryFn: () => listarPedidosCliente(clienteId ?? ''),
+    enabled: hayUsuario && clienteId !== undefined && clienteId.length > 0,
+    staleTime: STALE_TIME_PEDIDOS_MS,
+    gcTime: GC_TIME_PEDIDOS_MS,
+    retry: debeReintentar,
+    networkMode: 'always',
+  });
+  return conAvisoDeConexion(consulta, enLinea);
+}
+
+/**
+ * Cantidad de pedidos de un mes ("AAAA-MM") para el Panel general. Solo se pide con una sesión del
+ * personal: es una consulta de todos los clientes.
+ */
+export function usePedidosDelMes(mes: string): ConsultaConConexion<number> {
+  const esPersonal = useSesionStore(
+    (estado) => estado.usuario?.rol === 'trabajador' || estado.usuario?.rol === 'administrador',
+  );
+  const enLinea = useEnLinea();
+  const consulta = useQuery<number, ErrorApi>({
+    queryKey: ['pedidos', 'mes', mes],
+    queryFn: () => contarPedidosDelMes(mes),
+    enabled: esPersonal,
     staleTime: STALE_TIME_PEDIDOS_MS,
     gcTime: GC_TIME_PEDIDOS_MS,
     retry: debeReintentar,
