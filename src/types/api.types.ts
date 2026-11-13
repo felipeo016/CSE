@@ -357,10 +357,10 @@ export interface BorradorCotizacionCuerpoApi {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Pedidos (solo lo que devuelve aceptar_cotizacion; el resto lo completa J6)
+// Pedidos (RF-13, RF-14, RF-22)
 // ---------------------------------------------------------------------------------------------
 
-/** Fila de la tabla pedidos que devuelve la RPC aceptar_cotizacion (RF-22). */
+/** Fila de la tabla pedidos (la devuelven aceptar_cotizacion, registrar_pedido_carrito y el GET). */
 export interface PedidoApi {
   id: string;
   numero: string;
@@ -376,6 +376,70 @@ export interface PedidoApi {
   total: number;
   estado: 'pendiente';
   creado_en: string;
+}
+
+/** Línea de pedido: copia de código, nombre y precio de venta al comprar (nunca el costo). */
+export interface PedidoLineaApi {
+  id: string;
+  producto_id: string;
+  codigo_producto: string | null;
+  nombre_producto: string;
+  precio_unitario: number;
+  cantidad: number;
+  subtotal: number;
+}
+
+/** Pedido con sus líneas (GET /rest/v1/pedidos?select=...,pedido_lineas(...)). */
+export interface PedidoConLineasApi extends PedidoApi {
+  pedido_lineas: PedidoLineaApi[] | null;
+}
+
+/**
+ * Cuerpo de la RPC registrar_pedido_carrito (RF-13). Solo producto y cantidad: el servidor toma el
+ * precio según el tipo del cliente y verifica el inventario.
+ */
+export interface PedidoCarritoCuerpoApi {
+  lineas: { producto_id: string; cantidad: number }[];
+  incluye_servicio: boolean;
+  tipo_servicio: TipoServicioApi | null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Citas (RF-27, RF-28)
+// ---------------------------------------------------------------------------------------------
+
+export type EstadoCitaApi = 'programada' | 'realizada' | 'cancelada';
+
+/**
+ * Fila de la tabla citas con el cliente, la ubicación y el número del pedido embebidos
+ * (GET /rest/v1/citas?select=...,cliente:clientes(nombre),...). RLS: el cliente recibe solo las
+ * suyas; el personal, todas.
+ */
+export interface CitaApi {
+  id: string;
+  cliente_id: string;
+  tipo: TipoServicioApi;
+  /** Fecha sin hora, "AAAA-MM-DD". */
+  fecha: string;
+  /** "HH:mm-HH:mm", por ejemplo "08:00-10:00". */
+  franja: string;
+  ubicacion_id: string;
+  pedido_id: string | null;
+  estado: EstadoCitaApi;
+  creado_en: string;
+  cliente: { nombre: string } | null;
+  ubicacion: { direccion: string; referencia: string | null } | null;
+  pedido: { numero: string } | null;
+}
+
+/** Cuerpo de POST /rest/v1/citas. estado, creada_por y fechas los pone el servidor. */
+export interface CitaCuerpoApi {
+  cliente_id: string;
+  tipo: TipoServicioApi;
+  fecha: string;
+  franja: string;
+  ubicacion_id: string;
+  pedido_id: string | null;
 }
 
 // ---------------------------------------------------------------------------------------------

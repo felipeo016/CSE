@@ -2,6 +2,7 @@ import { FlatList, KeyboardAvoidingView, Platform, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+import ConfirmarCompraCarrito from '../../../../src/components/ConfirmarCompraCarrito';
 import EstadoVista from '../../../../src/components/EstadoVista';
 import LineaCarritoItem from '../../../../src/components/LineaCarritoItem';
 import ResumenCarrito from '../../../../src/components/ResumenCarrito';
@@ -12,7 +13,7 @@ import { totalUnidades, useCarritoStore } from '../../../../src/store/carritoSto
  * Carrito del cliente (RF-10 a RF-12): líneas con cantidad y Eliminar, servicio de instalación o
  * mantenimiento y resumen del total. El carrito vive en Zustand (carritoStore) y se guarda en
  * AsyncStorage, así sigue ahí al cambiar de pestaña o reabrir la app (RF-11).
- * El botón para confirmar la compra lo agrega J6.
+ * Confirmar pedido (J6, RF-13) registra la compra en el servidor con "Pago simulado".
  */
 export default function Carrito() {
   const lineas = useCarritoStore((estado) => estado.lineas);
@@ -52,6 +53,7 @@ export default function Carrito() {
               <View>
                 <SelectorServicio servicio={servicio} onCambiar={elegirServicio} />
                 <ResumenCarrito lineas={lineas} servicio={servicio} />
+                <ConfirmarCompraCarrito lineas={lineas} servicio={servicio} />
               </View>
             }
             contentContainerClassName="px-pantalla pb-seccion"

@@ -83,6 +83,10 @@ export default function RootLayout() {
             name="(cliente)/flujos/confirmacion-pedido"
             options={{ ...OPCIONES_ENCABEZADO_STACK, title: 'Confirmación de pedido' }}
           />
+          <Stack.Screen
+            name="(cliente)/flujos/pedido/[id]"
+            options={{ ...OPCIONES_ENCABEZADO_STACK, title: 'Detalle de pedido' }}
+          />
 
           {/* Flujos del trabajador y del administrador. */}
           <Stack.Screen

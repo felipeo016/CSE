@@ -1,4 +1,5 @@
-import { FlatList, RefreshControl, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { FlatList, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -15,7 +16,8 @@ import { useRecargarAlVolver } from '../../../../src/hooks/useRecargarAlVolver';
  * estado, de la más reciente a la más antigua. Las Nuevas (sin abrir) se ven como no leídas y las
  * solicitudes que aún no se cotizan como "Por cotizar".
  * Solo llegan las cotizaciones del cliente de la sesión: lo garantiza el servidor (RLS).
- * Se recarga al deslizar hacia abajo y al volver a la pantalla (useRecargarAlVolver).
+ * Se recarga al deslizar hacia abajo (también en el vacío y en el error) y al volver a la
+ * pantalla (useRecargarAlVolver).
  */
 export default function BandejaCotizaciones() {
   // Sin filtros: el cliente ve todas las suyas (useCotizaciones de F5, TanStack Query).
@@ -27,29 +29,49 @@ export default function BandejaCotizaciones() {
     router.push('/(cliente)/flujos/solicitar-cotizacion');
   }
 
+  // Deslizar hacia abajo para recargar: lo usan la lista, el vacío y el error.
+  const controlRecarga = (
+    <RefreshControl
+      refreshing={consulta.isRefetching}
+      onRefresh={() => {
+        void consulta.refetch();
+      }}
+      colors={[COLORES.primario]}
+    />
+  );
+
+  /** El vacío y el error van dentro de un ScrollView para poder recargarlos deslizando. */
+  function recargable(vista: ReactNode) {
+    return (
+      <ScrollView contentContainerClassName="flex-grow" refreshControl={controlRecarga}>
+        {vista}
+      </ScrollView>
+    );
+  }
+
   function contenido() {
     if (consulta.isPending) {
       return <EstadoVista tipo="carga" mensaje="Cargando cotizaciones…" />;
     }
 
     if (consulta.isError && consulta.data === undefined) {
-      return (
+      return recargable(
         <EstadoVista
           tipo="error"
           mensaje="No se pudieron cargar tus cotizaciones"
           detalle={consulta.sinConexion ? 'Revisa tu conexión e inténtalo de nuevo' : consulta.error.mensaje}
           accion={{ texto: 'Reintentar', onPress: () => consulta.refetch() }}
-        />
+        />,
       );
     }
 
     if (cotizaciones.length === 0) {
-      return (
+      return recargable(
         <EstadoVista
           tipo="vacio"
           mensaje="Aún no tienes cotizaciones"
-          detalle="Cuando el negocio te envíe una cotización, aparecerá aquí."
-        />
+          detalle="Puedes pedir una con el botón Solicitar cotización de arriba. Cuando el negocio te envíe una cotización, aparecerá aquí."
+        />,
       );
     }
 
@@ -64,15 +86,7 @@ export default function BandejaCotizaciones() {
           />
         )}
         contentContainerClassName="px-pantalla pb-seccion"
-        refreshControl={
-          <RefreshControl
-            refreshing={consulta.isRefetching}
-            onRefresh={() => {
-              void consulta.refetch();
-            }}
-            colors={[COLORES.primario]}
-          />
-        }
+        refreshControl={controlRecarga}
       />
     );
   }
