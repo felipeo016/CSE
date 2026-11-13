@@ -178,7 +178,7 @@ const ERRORES_AUTH: Record<string, { tipo: ErrorApi['tipo']; mensaje: string }> 
 };
 
 // Tipo de error para cada hint fijo de las funciones de Supabase (docs/servicio-remoto.md).
-// El "message" de esas funciones ya viene en español y se muestra tal cual.
+// El "message" de esas funciones ya viene en español y se muestra tal cual (en tú: MENSAJES_EN_TU).
 const TIPO_POR_HINT: Record<string, ErrorApi['tipo']> = {
   ACCESO_NO_AUTORIZADO: 'no_autorizado',
   COTIZACION_NO_ENCONTRADA: 'validacion',
@@ -197,6 +197,24 @@ const TIPO_POR_HINT: Record<string, ErrorApi['tipo']> = {
   CORREO_REGISTRADO: 'conflicto',
   USUARIO_NO_ENCONTRADO: 'validacion',
 };
+
+// Mensajes de las migraciones 002, 005 y 007 que siguen en "usted". La app trata al usuario de
+// tú, así que se cambian aquí por su versión en tú (C1). Se busca el texto exacto: el hint
+// (DATOS_INVALIDOS) lo comparten muchos mensajes y no basta para saber cuál es. Si el servidor
+// cambia el texto, simplemente se muestra el original. Los demás mensajes ya están en tú o son
+// citas literales de la documentación ("Acceso no autorizado", "Cotización no encontrada"...).
+const MENSAJES_EN_TU: Record<string, string> = {
+  'Elija el tipo de servicio': 'Elige el tipo de servicio', // 005 y 007 (solicitar cotización)
+  'Describa su necesidad': 'Describe tu necesidad', // 005 y 007 (solicitar cotización)
+  'Elija una ubicación registrada del cliente': 'Elige una ubicación registrada del cliente', // 002 (citas)
+  'No puede cambiar su propio rol ni desactivar su propia cuenta':
+    'No puedes cambiar tu propio rol ni desactivar tu propia cuenta', // 002 (perfiles)
+};
+
+/** Mensaje del servidor en tú (si estaba en usted) o tal cual llegó. */
+function mensajeEnTu(mensaje: string): string {
+  return MENSAJES_EN_TU[mensaje] ?? mensaje;
+}
 
 function crearError(tipo: ErrorApi['tipo'], mensaje: string, codigo?: string): ErrorApi {
   return codigo ? { tipo, mensaje, codigo } : { tipo, mensaje };
@@ -250,7 +268,7 @@ function convertirError(error: AxiosError): ErrorApi {
   // 1. Funciones y tablas (PostgREST): primero el hint fijo, luego el código de PostgreSQL.
   if (esErrorPostgrest(cuerpo)) {
     if (cuerpo.hint && TIPO_POR_HINT[cuerpo.hint]) {
-      return crearError(TIPO_POR_HINT[cuerpo.hint], cuerpo.message, cuerpo.hint);
+      return crearError(TIPO_POR_HINT[cuerpo.hint], mensajeEnTu(cuerpo.message), cuerpo.hint);
     }
     if (cuerpo.code === '23505') {
       return crearError('conflicto', 'Ya existe un registro con esos datos', cuerpo.code);

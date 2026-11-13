@@ -19,8 +19,9 @@ import {
   type CotizacionPersonal,
   type FiltroEstadoCotizacion,
 } from '../../../../src/models/Cotizacion';
+import { normalizarTexto } from '../../../../src/utils/texto';
 
-/** Espera tras la última letra antes de buscar en el servidor. */
+/** Espera tras la última letra antes de filtrar por cliente (no se filtra con cada tecla). */
 const ESPERA_BUSQUEDA_MS = 400;
 
 /** Chips de estado en el orden de RF-19 (más Vencida, agregada en F5). */
@@ -28,8 +29,10 @@ const FILTROS = Object.keys(NOMBRE_FILTRO_COTIZACION) as FiltroEstadoCotizacion[
 
 /**
  * Cotizaciones del trabajador y del administrador (RF-19): solicitudes y cotizaciones con filtro
- * por estado y búsqueda por nombre del cliente. El filtro y la búsqueda los aplica el servidor
- * (useCotizaciones → cotizaciones.service). La protección por rol la hace el _layout del Drawer.
+ * por estado y búsqueda por nombre del cliente. El estado lo filtra el servidor
+ * (useCotizaciones → cotizaciones.service); el nombre del cliente se busca en la app, sin
+ * distinguir tildes ("Gomez" encuentra "Gómez"), igual que en Clientes.
+ * La protección por rol la hace el _layout del Drawer.
  */
 export default function CotizacionesTrabajador() {
   // null = todas. "Enviada" agrupa Nueva y Vista.
@@ -38,13 +41,14 @@ export default function CotizacionesTrabajador() {
   const [busqueda, setBusqueda] = useState('');
   const busquedaEnviada = useRetraso(busqueda, ESPERA_BUSQUEDA_MS).trim();
 
-  const consulta = useCotizaciones({
-    ...(estado ? { estado } : {}),
-    ...(busquedaEnviada ? { busquedaCliente: busquedaEnviada } : {}),
-  });
+  const consulta = useCotizaciones(estado ? { estado } : {});
 
-  // El personal siempre recibe cotizaciones con su cliente; el filtro solo ayuda a TypeScript.
-  const cotizaciones: CotizacionPersonal[] = (consulta.data ?? []).filter(esCotizacionPersonal);
+  // El personal siempre recibe cotizaciones con su cliente; esCotizacionPersonal ayuda a TypeScript.
+  // Después se dejan las del cliente buscado (sin texto, normalizarTexto da '' y pasan todas).
+  const textoCliente = normalizarTexto(busquedaEnviada);
+  const cotizaciones: CotizacionPersonal[] = (consulta.data ?? [])
+    .filter(esCotizacionPersonal)
+    .filter((cotizacion) => normalizarTexto(cotizacion.cliente?.nombre ?? '').includes(textoCliente));
   const hayFiltros = estado !== null || busquedaEnviada !== '';
 
   function abrirNueva() {

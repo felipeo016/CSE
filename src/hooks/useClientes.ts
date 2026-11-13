@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   crearCliente,
@@ -10,6 +10,7 @@ import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
 import type { Cliente, DatosCliente } from '../models/Cliente';
 import type { ErrorApi } from '../types/api.types';
+import { filtrarClientes } from '../utils/clientes';
 import { conAvisoDeConexion, debeReintentar, type ConsultaConConexion } from '../utils/consultas';
 
 /**
@@ -20,10 +21,8 @@ import { conAvisoDeConexion, debeReintentar, type ConsultaConConexion } from '..
 const STALE_TIME_CLIENTES_MS = 2 * 60 * 1000;
 const GC_TIME_CLIENTES_MS = 10 * 60 * 1000;
 
-/** queryKey del listado: uno por texto de búsqueda. */
-export function claveClientes(busqueda: string) {
-  return ['clientes', busqueda] as const;
-}
+/** queryKey del listado: uno solo, porque la búsqueda se aplica en la app sobre la lista. */
+export const CLAVE_CLIENTES = ['clientes'] as const;
 
 /** queryKey del detalle. */
 export function claveCliente(id: string | undefined) {
@@ -32,22 +31,21 @@ export function claveCliente(id: string | undefined) {
 
 /**
  * Lista de clientes con búsqueda por nombre o teléfono (RF-33).
- * placeholderData: mientras llega el resultado de una búsqueda nueva se sigue mostrando la lista
- * anterior, en lugar de volver al indicador de carga con cada letra.
+ * Se pide la lista completa una vez y select la filtra en la app sin distinguir tildes
+ * ("Gomez" encuentra "Gómez"); cambiar la búsqueda no hace otra petición.
  */
 export function useClientes(busqueda = ''): ConsultaConConexion<Cliente[]> {
   const hayUsuario = useSesionStore((estado) => estado.usuario !== null);
   const enLinea = useEnLinea();
-  const texto = busqueda.trim();
   const consulta = useQuery<Cliente[], ErrorApi>({
-    queryKey: claveClientes(texto),
-    queryFn: () => listarClientes(texto),
+    queryKey: CLAVE_CLIENTES,
+    queryFn: listarClientes,
+    select: (clientes) => filtrarClientes(clientes, busqueda),
     enabled: hayUsuario,
     staleTime: STALE_TIME_CLIENTES_MS,
     gcTime: GC_TIME_CLIENTES_MS,
     retry: debeReintentar,
     networkMode: 'always',
-    placeholderData: keepPreviousData,
   });
   return conAvisoDeConexion(consulta, enLinea);
 }

@@ -12,7 +12,7 @@ import { COLORES } from '../../../../src/config/colores';
 import { useClientes } from '../../../../src/hooks/useClientes';
 import { useRetraso } from '../../../../src/hooks/useRetraso';
 
-/** Espera tras la última letra antes de buscar en el servidor. */
+/** Espera tras la última letra antes de filtrar la lista (no se filtra con cada tecla). */
 const ESPERA_BUSQUEDA_MS = 400;
 
 /**

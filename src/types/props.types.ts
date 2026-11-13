@@ -90,18 +90,6 @@ export interface CampoTextoProps {
   multilinea?: boolean;
 }
 
-/** Pantalla que pertenece a un prompt futuro: título y aviso "En construcción — [ID]". */
-export interface PantallaEnConstruccionProps {
-  titulo: string;
-  /** ID del prompt que completará la pantalla, por ejemplo 'J3'. */
-  prompt: string;
-  /**
-   * true en las pantallas Stack, donde el título ya aparece en el encabezado junto a la flecha
-   * atrás; así no se repite. Por defecto false (el título grande va dentro de la pantalla).
-   */
-  tituloEnEncabezado?: boolean;
-}
-
 /** Formulario de Perfil: recibe los datos de la cuenta ya cargados del servidor. */
 export interface FormularioPerfilProps {
   usuario: Usuario;

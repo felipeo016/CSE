@@ -17,32 +17,12 @@ const DEVOLVER_FILA = { Prefer: 'return=representation' };
 const ERROR_NO_ENCONTRADO: ErrorApi = { tipo: 'validacion', mensaje: 'Cliente no encontrado' };
 
 /**
- * Quita del texto de búsqueda los caracteres que tienen significado especial para PostgREST
- * (comodines, comas, paréntesis y comillas), para buscar solo el texto escrito.
+ * Lista todos los clientes ordenados por nombre (RF-33). La búsqueda se aplica en la app sobre
+ * esta lista (src/utils/clientes.ts): así "Gomez" encuentra "Gómez", algo que el ilike del
+ * servidor no hace, y escribir no lanza una petición por cada búsqueda (RNF-03).
  */
-function limpiarBusqueda(texto: string): string {
-  return texto.replace(/[*%,()"\\]/g, ' ').trim();
-}
-
-/**
- * Lista los clientes por nombre. Con búsqueda, deja solo los que contienen el texto en el
- * nombre o en el teléfono, sin distinguir mayúsculas (RF-33). En el teléfono se buscan los
- * dígitos sin espacios, porque así se guardan ("300 123" encuentra 3001234567).
- */
-export async function listarClientes(busqueda = ''): Promise<Cliente[]> {
-  const texto = limpiarBusqueda(busqueda);
+export async function listarClientes(): Promise<Cliente[]> {
   const parametros: Record<string, string> = { select: '*', order: 'nombre' };
-
-  if (texto !== '') {
-    const digitos = texto.replace(/\s/g, '');
-    const condiciones = [`nombre.ilike."*${texto}*"`];
-    if (/^\d+$/.test(digitos)) {
-      condiciones.push(`telefono.ilike.*${digitos}*`);
-    }
-    // or=(a,b): cumple una u otra condición.
-    parametros.or = `(${condiciones.join(',')})`;
-  }
-
   const respuesta = await api.get<ClienteApi[]>(RUTA_CLIENTES, { params: parametros });
   return respuesta.data.map(mapearCliente);
 }

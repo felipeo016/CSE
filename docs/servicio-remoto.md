@@ -81,9 +81,12 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    - Nunca la llave secreta (`sb_secret_...`) ni la `service_role`.
 7. Carga inicial del inventario real (F7, RF-32): ejecuta `supabase/seed/inventario_inicial.sql`
    en el SQL Editor, después de los datos de prueba. Ver la sección 10.
-8. Decisión pendiente del equipo: en **Authentication > Sign In / Providers > Email**, la opción
-   "Confirm email". Si queda activa, quien se registra desde la app debe confirmar el correo antes
-   de iniciar sesión. (Los usuarios que crea el administrador desde la app quedan confirmados.)
+8. En **Authentication > Sign In / Providers > Email**, apaga **"Confirm email"** (decisión del
+   equipo en C1): la app no envía correos, así que quien se registra desde la app inicia sesión
+   enseguida. Si se deja activa, debe confirmar el correo antes (la app muestra "Debes confirmar tu
+   correo…"). Los usuarios que crea el administrador desde la app quedan confirmados.
+10. Comprueba la seguridad por HTTP con `npm run verificar-seguridad` (README): con el token del
+    cliente no llega costo ni ganancia y modificar productos es rechazado.
 9. Usuarios y roles (F8, RF-34): publica la Edge Function `admin-usuarios` y configura su secreto
    siguiendo la sección 11.
 
@@ -198,6 +201,12 @@ el texto para el usuario y `hint` un código fijo para decidir qué hacer en la 
 | `FRANJA_PASADA` (008) | Esa franja ya pasó. Elige otra franja u otro día (el mismo texto que muestra la app) |
 | `CORREO_REGISTRADO` (F8, `admin-usuarios`) | Ya existe un usuario con ese correo |
 | `USUARIO_NO_ENCONTRADO` (F8, `admin-usuarios`) | Usuario no encontrado |
+
+Mensajes en "usted": algunos mensajes de 002, 005 y 007 siguen en usted ("Elija el tipo de
+servicio", "Describa su necesidad", "Elija una ubicación registrada del cliente" y "No puede cambiar
+su propio rol…"). La app los muestra en tú: `src/services/api.ts` los cambia por su texto exacto
+(`MENSAJES_EN_TU`, C1). No se hizo una migración 010 para no reescribir funciones SECURITY DEFINER
+ya probadas solo por un cambio de texto.
 
 Otros códigos útiles: `23505` (dato duplicado, por ejemplo el código de producto) y `42501`
 (la política RLS no permite la operación).

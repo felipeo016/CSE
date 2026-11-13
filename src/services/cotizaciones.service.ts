@@ -80,19 +80,15 @@ const COLUMNAS_CLIENTE = `${COLUMNAS_CABECERA},cotizacion_lineas,cotizacion_prod
 
 /**
  * Personal (tabla cotizaciones): líneas y productos de interés embebidos, y además el cliente.
- * Con búsqueda por cliente se usa !inner: así PostgREST solo devuelve las cotizaciones cuyo
- * cliente cumple el filtro (sin !inner devolvería todas).
+ * La búsqueda por nombre del cliente se hace en la pantalla, sin distinguir tildes.
  */
-function columnasPersonal(conBusquedaCliente: boolean): string {
-  const embebido = conBusquedaCliente ? 'clientes!inner' : 'clientes';
-  return [
-    COLUMNAS_CABECERA,
-    'cotizacion_lineas(id,producto_id,codigo_producto,nombre_producto,precio_unitario,cantidad,subtotal)',
-    'cotizacion_productos_interes(id,producto_id,nombre_producto,cantidad)',
-    'cliente_id',
-    `cliente:${embebido}(id,nombre,telefono,tipo)`,
-  ].join(',');
-}
+const COLUMNAS_PERSONAL = [
+  COLUMNAS_CABECERA,
+  'cotizacion_lineas(id,producto_id,codigo_producto,nombre_producto,precio_unitario,cantidad,subtotal)',
+  'cotizacion_productos_interes(id,producto_id,nombre_producto,cantidad)',
+  'cliente_id',
+  'cliente:clientes(id,nombre,telefono,tipo)',
+].join(',');
 
 /** Error para una cotización que no existe o que no es del cliente (RF-21). */
 const ERROR_NO_ENCONTRADA: ErrorApi = {
@@ -111,19 +107,10 @@ function rolActual(): Rol {
   return usuario.rol;
 }
 
-/**
- * Quita del texto de búsqueda los caracteres que tienen significado especial para PostgREST
- * (comodines, comas, paréntesis y comillas), para buscar solo el texto escrito.
- */
-function limpiarBusqueda(texto: string): string {
-  return texto.replace(/[*%,()"\\]/g, ' ').trim();
-}
-
 /** Parámetros de la URL según los filtros (RF-19). */
 function parametrosDeFiltros(filtros: FiltrosCotizaciones, esPersonal: boolean) {
-  const busqueda = esPersonal ? limpiarBusqueda(filtros.busquedaCliente ?? '') : '';
   const parametros: Record<string, string> = {
-    select: esPersonal ? columnasPersonal(busqueda !== '') : COLUMNAS_CLIENTE,
+    select: esPersonal ? COLUMNAS_PERSONAL : COLUMNAS_CLIENTE,
     order: 'creado_en.desc',
   };
   // Orden de las líneas embebidas (personal). En la vista del cliente ya vienen ordenadas.
@@ -138,10 +125,6 @@ function parametrosDeFiltros(filtros: FiltrosCotizaciones, esPersonal: boolean) 
     parametros.estado_actual = `eq.${filtros.estado}`;
   }
 
-  if (busqueda !== '') {
-    // ilike: contiene el texto sin distinguir mayúsculas. * es el comodín de PostgREST.
-    parametros['cliente.nombre'] = `ilike.*${busqueda}*`;
-  }
   if (esPersonal && filtros.clienteId && esUuid(filtros.clienteId)) {
     parametros.cliente_id = `eq.${filtros.clienteId}`;
   }

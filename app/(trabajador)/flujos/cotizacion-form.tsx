@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -213,6 +213,17 @@ function FormularioCotizacion({ inicial }: FormularioCotizacionProps) {
     descuentoTexto,
     costoServicioTexto: servicioIncluido ? costoServicioTexto : undefined,
   });
+
+  // Si el tipo de servicio se eligió antes de que llegaran las tarifas (o tras un error que se
+  // reintentó), el costo quedó vacío: al llegar los parámetros se propone la tarifa. Si el
+  // trabajador ya escribió un valor, no se toca.
+  const tarifas = parametros.data;
+  useEffect(() => {
+    if (tarifas && incluyeServicio && tipoServicio && costoServicioTexto === '') {
+      setCostoServicioTexto(tarifaComoTexto(tipoServicio, tarifas));
+    }
+    // Solo cuando llegan las tarifas: si el trabajador borra el valor a propósito, no se rellena.
+  }, [tarifas]);
 
   const errores = validarFormulario(cliente, tipoServicio, lineasVista);
   const ocupado = enviando || guardar.isPending || enviar.isPending;

@@ -74,6 +74,11 @@ export default function CitasTrabajador() {
   }
 
   function confirmarCambio(cita: Cita, estado: EstadoFinalCita) {
+    // Mientras otra cita se guarda no se abre otra confirmación (guardarEstado la ignoraría).
+    if (cambiar.isPending) {
+      Alert.alert('Espera un momento', 'Se está guardando el cambio de otra cita.');
+      return;
+    }
     const cliente = cita.clienteNombre ?? 'el cliente';
     const cuando = `${formatearFechaCita(cita.fecha)}, ${cita.franjaTexto}`;
     Alert.alert(

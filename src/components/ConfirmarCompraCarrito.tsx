@@ -174,7 +174,8 @@ export default function ConfirmarCompraCarrito({ lineas, servicio }: ConfirmarCo
         icono="check-circle"
         onPress={confirmarPago}
         cargando={comprar.isPending}
-        deshabilitado={lineas.length === 0}
+        // Sin total calculado (tarifas cargando o con error) no se puede confirmar la compra.
+        deshabilitado={lineas.length === 0 || !desglose}
       />
     </View>
   );
