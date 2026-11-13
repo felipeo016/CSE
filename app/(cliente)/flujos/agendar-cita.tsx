@@ -69,9 +69,13 @@ interface ErrorEnvio {
   reintentable: boolean;
 }
 
+// Sin conexión o sin respuesta a tiempo: la cita pudo quedar guardada o no, así que no se afirma
+// ninguna de las dos cosas. Reintentar es seguro: el servidor no deja agendar la misma franja dos
+// veces (CITA_REPETIDA, migración 008).
 const ERROR_SIN_CONEXION: ErrorEnvio = {
-  titulo: 'Sin conexión',
-  mensaje: 'Tu cita no se agendó. Revisa tu conexión y pulsa Reintentar.',
+  titulo: 'No se pudo confirmar la cita',
+  mensaje:
+    'No pudimos confirmar tu cita con el servidor. Revisa tu conexión y pulsa Reintentar: es seguro, no se agendará dos veces la misma franja.',
   sinConexion: true,
   reintentable: true,
 };
@@ -161,6 +165,11 @@ function FormularioCita() {
       setErrorEnvio(ERROR_SIN_CONEXION);
       return;
     }
+    // Errores de la franja que revisa el servidor (migración 008): van bajo el campo Franja.
+    if (error.codigo === 'CITA_REPETIDA' || error.codigo === 'FRANJA_PASADA') {
+      setErrores((anteriores) => ({ ...anteriores, franja: error.mensaje }));
+      return;
+    }
     setErrorEnvio({
       titulo: 'No se pudo agendar la cita',
       mensaje: error.mensaje,
@@ -177,7 +186,7 @@ function FormularioCita() {
     const nuevos: ErroresCita = {
       tipo: tipo === null ? 'Elige el tipo de servicio' : null,
       fecha: fechaCitaValida(fecha),
-      // Hoy no se acepta una franja cuya hora de inicio ya pasó (solo lo valida la app).
+      // Hoy no se acepta una franja cuya hora de inicio ya pasó (el servidor también lo revisa).
       franja: franja === null ? 'Elige una franja horaria' : franjaCitaValida(fecha, franja),
       ubicacion:
         ubicacionId !== null

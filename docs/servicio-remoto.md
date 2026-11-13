@@ -38,9 +38,23 @@ secciones 9 y RNF-10 de la documentación del proyecto.
    7. `supabase/migrations/007_borrador_oculto_cliente.sql` (el cliente no ve una cotización
       mientras se prepara: políticas de lectura por estado, vista `cotizaciones_cliente` y
       `marcar_cotizacion_vista` sin devolver borradores; ver la sección 5).
-   8. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
+   8. `supabase/migrations/008_compras_y_citas.sql` (compra sin duplicados: identificador de
+      compra en `registrar_pedido_carrito`; citas sin repetir día y franja ni en una franja de hoy
+      que ya pasó; ver la sección 5). Va en una transacción y se puede ejecutar dos veces.
+   9. `supabase/seed/datos_prueba.sql`, **parte 1** (productos de prueba).
 
-   Si el proyecto ya tenía 001 a 006 y los datos de prueba, basta con ejecutar 007.
+   Si el proyecto ya tenía 001 a 007 y los datos de prueba, basta con ejecutar 008.
+
+   Si 008 se detiene con "Hay citas programadas repetidas", no cambió nada. Esta consulta muestra
+   cuáles son; el equipo decide cuál cancelar (por ejemplo, desde Citas del trabajador) y vuelve a
+   ejecutar 008:
+
+   ```sql
+   select c.cliente_id, cl.nombre, c.fecha, c.franja, count(*) as citas
+   from public.citas c join public.clientes cl on cl.id = c.cliente_id
+   where c.estado = 'programada'
+   group by 1, 2, 3, 4 having count(*) > 1;
+   ```
 3. Crea los tres usuarios de prueba en **Authentication > Users > Add user > Create new user**, con
    "Auto Confirm User" marcado:
    - `cliente@cse.test`
@@ -148,7 +162,7 @@ Todas con `POST` y cuerpo JSON con los nombres exactos de los parámetros.
 | --- | --- | --- | --- |
 | `crear_solicitud_cotizacion` (RF-15) | `{ "tipo_servicio": "instalacion", "descripcion": "...", "productos_interes": [{ "producto_id": "...", "cantidad": 2 }] }` (`productos_interes` y `cantidad` son opcionales) | La cotización creada: solo `id`, `numero` y `estado` (`solicitada`); las demás columnas en null (007) | Cliente |
 | `guardar_borrador_cotizacion` (RF-16, RF-17) | `{ "id": null, "cliente_id": "...", "tipo_servicio": "instalacion", "descripcion": null, "descuento": 20000, "incluye_servicio": true, "costo_servicio": null, "lineas": [{ "producto_id": "...", "cantidad": 2 }] }` (`id` null crea uno nuevo; con `id` completa esa solicitud o ese borrador y reemplaza todas sus líneas) | La cotización guardada (estado `borrador`) con los totales del servidor | Trabajador, administrador |
-| `registrar_pedido_carrito` (RF-13) | `{ "lineas": [{ "producto_id": "...", "cantidad": 2 }], "incluye_servicio": true, "tipo_servicio": "instalacion" }` | El pedido creado | Cliente |
+| `registrar_pedido_carrito` (RF-13) | `{ "lineas": [{ "producto_id": "...", "cantidad": 2 }], "incluye_servicio": true, "tipo_servicio": "instalacion", "compra_id": "uuid" }` (`compra_id` desde 008: la app lo crea una vez por compra y lo repite en cada Reintentar; sin él funciona como antes) | El pedido creado. Con un `compra_id` ya usado y el mismo contenido (mismas líneas y cantidades, mismo servicio), el pedido que ya existía, sin descontar inventario otra vez; con otro contenido, `COMPRA_YA_REGISTRADA` | Cliente |
 | `aceptar_cotizacion` (RF-22) | `{ "id": "..." }` | El pedido creado | Cliente dueño |
 | `rechazar_cotizacion` (RF-22) | `{ "id": "..." }` | La cotización | Cliente dueño |
 | `marcar_cotizacion_vista` (RF-21) | `{ "id": "..." }` | La cotización | Cliente dueño |
@@ -169,6 +183,9 @@ el texto para el usuario y `hint` un código fijo para decidir qué hacer en la 
 | `INVENTARIO_INSUFICIENTE` | Solo hay 2 unidades disponibles de X / X: Agotado (`details` trae `{"producto_id","nombre","disponibles"}`) |
 | `DATOS_INVALIDOS` | La fecha de la cita no puede ser pasada |
 | `ULTIMO_ADMINISTRADOR` | Debe quedar al menos un administrador activo |
+| `COMPRA_YA_REGISTRADA` (008) | Tu compra anterior ya quedó registrada como PED-00012. Revísala en Mis pedidos. (`details` trae `{"pedido_id","numero"}`) |
+| `CITA_REPETIDA` (008) | Ya tienes una cita programada en ese día y franja. |
+| `FRANJA_PASADA` (008) | Esa franja ya pasó. Elige otra franja u otro día (el mismo texto que muestra la app) |
 
 Otros códigos útiles: `23505` (dato duplicado, por ejemplo el código de producto) y `42501`
 (la política RLS no permite la operación).
@@ -203,6 +220,33 @@ por ejemplo que el administrador cree usuarios de Auth (RF-34, prompt F8):
     de base de datos (`authenticated`), así que no se pueden quitar columnas con GRANT solo al
     cliente. Una vista SECURITY DEFINER la marcaría el Security Advisor como error.
   - Para el personal no cambia nada: sigue leyendo la tabla `cotizaciones` completa.
+- **Compra sin duplicados (migración 008).** Si la respuesta de `registrar_pedido_carrito` tarda
+  más que el tiempo de espera de la app (15 s), el pedido pudo quedar registrado aunque la app no
+  lo sepa. Por eso cada compra lleva un `compra_id` (uuid) que la app crea una vez y repite en cada
+  Reintentar:
+  - El pedido guarda `compra_id` y `compra_huella` (md5 del contenido normalizado: productos
+    ordenados, cantidades sumadas si un producto viene dos veces, y el servicio). La restricción
+    `pedidos_compra_unica (cliente_id, compra_id)` impide usar un identificador dos veces. Los
+    pedidos anteriores a 008 y los de cotizaciones aceptadas quedan con los dos en null.
+  - Mismo identificador y misma huella: devuelve el pedido existente, igual que si lo acabara de
+    crear, sin descontar inventario. Huella distinta: `COMPRA_YA_REGISTRADA` con el número.
+  - Dos llamadas iguales al mismo tiempo: un bloqueo con nombre (`pg_advisory_xact_lock`, por
+    cliente e identificador) hace esperar a la segunda hasta que la primera termina; entonces
+    encuentra el pedido. Se comprobó con dos sesiones simultáneas: un solo pedido y un solo
+    descuento de inventario.
+  - Una compra que falla (por ejemplo, sin inventario) no deja nada guardado, así que el mismo
+    identificador sirve para el siguiente intento aunque el carrito haya cambiado.
+- **Citas (migración 008).** El trigger `citas_20_validar_franja` corre después de
+  `citas_10_proteger` (que ya fija el estado programada y rechaza fechas pasadas):
+  - `CITA_REPETIDA`: el cliente ya tiene una cita programada ese día en esa franja. Las citas
+    canceladas o realizadas no ocupan la franja. Respaldo: índice único parcial
+    `citas_programada_unica (cliente_id, fecha, franja) where estado = 'programada'`.
+  - `FRANJA_PASADA`: cita para hoy cuya hora de inicio ya llegó, comparando con
+    `now() at time zone 'America/Bogota'` (hora de Colombia, no la del servidor, que está en UTC).
+    Solo se revisa al crear o si cambian el día o la franja: marcar como Realizada una cita cuya
+    franja ya empezó sigue funcionando.
+  - No es SECURITY DEFINER: busca con los permisos de quien agenda (el cliente ve sus citas). Nadie
+    puede llamarla desde `/rest/v1/rpc`.
 - **Personal:** crea y edita productos y clientes, elabora y envía cotizaciones y cambia el estado
   de las citas (Programada → Realizada o Cancelada).
 - **Administrador:** además cambia roles y activa o desactiva perfiles. Nadie cambia su propio rol
@@ -407,6 +451,12 @@ corrige 4 advertencias. Las otras 10 se aceptan a propósito y se explican abajo
 `cotizaciones_del_cliente`, así que quedan 13 advertencias aceptadas. La vista
 `cotizaciones_cliente` de 007 es security_invoker, así que no suma errores.
 
+`008_compras_y_citas.sql` **no cambia la cuenta** (se espera 0 errores y 13 advertencias):
+`registrar_pedido_carrito` se reemplaza por la versión con `compra_id` (se borra la de tres
+parámetros, así que sigue siendo una sola función expuesta), y `citas_validar_franja` no es
+SECURITY DEFINER, tiene `search_path` fijo y no se puede ejecutar desde la API. Después de
+ejecutar 008 hay que revisar el Security Advisor y confirmar esa cuenta.
+
 ### Corregidas con 004: funciones de trigger
 
 `crear_perfil_nuevo_usuario()`, `perfiles_exigir_administrador()`, `perfiles_sincronizar_cliente()`
@@ -439,7 +489,7 @@ ejecutar ninguna (002 y 003 le quitan EXECUTE).
 | --- | --- | --- |
 | `crear_solicitud_cotizacion` | El cliente solicita una cotización con sus productos de interés (RF-15) en una sola transacción: si un producto falla, no queda la solicitud a medias. | Exige un cliente activo (`mi_cliente_id()`) y crea siempre a nombre de su propio `cliente_id` (la app no lo envía). Estado `solicitada`, descuento 0 y tarifa del servicio, como el trigger de 002. Valida tipo de servicio, descripción, formato de los productos y cantidades enteras ≥ 1; el trigger de 003 rechaza productos inexistentes o desactivados. Desde 007 responde solo `id`, `numero` y `estado` (el dinero y lo demás en null). Probada en PostgreSQL local (`docs/evidencias/f5-prueba-solicitud.txt` y `docs/evidencias/f-borrador-oculto.txt`). |
 | `guardar_borrador_cotizacion` | El personal guarda la cabecera y todas las líneas de un borrador (RF-16, RF-17) en una sola transacción: si una línea falla, el borrador queda como estaba. | Exige personal activo (`es_personal()`). Solo edita cotizaciones en `solicitada` o `borrador` (una enviada no se edita) y las bloquea con `FOR UPDATE`. Valida cliente, tipo de servicio, descuento y costo no negativos, al menos una línea, cantidades enteras ≥ 1 y que el descuento no supere el subtotal. Los triggers de 003 copian precio y nombre, rechazan productos desactivados, sin precio o sin inventario y calculan los totales. Probada en PostgreSQL local (`docs/evidencias/f6-prueba-borrador.txt`). |
-| `registrar_pedido_carrito` | El cliente compra desde el carrito (RF-13). No tiene permiso de insertar pedidos ni de cambiar el inventario. | Exige un cliente activo (`mi_cliente_id()`). Valida las cantidades. Toma el precio del producto según el tipo del cliente, nunca de la app. Bloquea los productos con `FOR UPDATE` y verifica el inventario antes de descontarlo. |
+| `registrar_pedido_carrito` | El cliente compra desde el carrito (RF-13). No tiene permiso de insertar pedidos ni de cambiar el inventario. | Exige un cliente activo (`mi_cliente_id()`). Valida las cantidades. Toma el precio del producto según el tipo del cliente, nunca de la app. Bloquea los productos con `FOR UPDATE` y verifica el inventario antes de descontarlo. Desde 008, con `compra_id` solo busca pedidos del mismo cliente: devuelve el suyo si es la misma compra o `COMPRA_YA_REGISTRADA` si no. Probada en PostgreSQL local (`docs/evidencias/f-008-compras-citas.txt`). |
 | `aceptar_cotizacion` | El cliente convierte la cotización en pedido (RF-22). | Solo el dueño de la cotización. Solo en estado nueva o vista y sin vencer. Bloquea la cotización y los productos y vuelve a verificar el inventario. |
 | `rechazar_cotizacion` | El cliente rechaza la cotización (RF-22). No tiene permiso de editar cotizaciones. | Solo el dueño. Solo en estado nueva o vista y sin vencer. |
 | `marcar_cotizacion_vista` | El cliente abre el detalle (RF-21). | Solo el dueño. Solo pasa de nueva a vista, o a vencida si ya venció. Desde 007, una cotización en solicitada o borrador responde "Cotización no encontrada" en vez de devolverse con sus totales. |

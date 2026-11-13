@@ -424,6 +424,11 @@ export interface PedidoCarritoCuerpoApi {
   lineas: { producto_id: string; cantidad: number }[];
   incluye_servicio: boolean;
   tipo_servicio: TipoServicioApi | null;
+  /**
+   * Identificador de la compra (migración 008). Con el mismo identificador y el mismo contenido,
+   * el servidor devuelve el pedido que ya existe; con otro contenido responde COMPRA_YA_REGISTRADA.
+   */
+  compra_id: string;
 }
 
 // ---------------------------------------------------------------------------------------------

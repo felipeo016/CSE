@@ -102,11 +102,11 @@ export function useCrearProducto() {
   });
 }
 
-/** Edita un producto. Recibe el id y los datos del formulario. */
+/** Edita un producto. Recibe el id y solo los campos que cambiaron en el formulario. */
 export function useEditarProducto() {
   const clienteQuery = useQueryClient();
-  return useMutation<ProductoPersonal, ErrorApi, { id: string; datos: DatosProducto }>({
-    mutationFn: ({ id, datos }) => editarProducto(id, datos),
+  return useMutation<ProductoPersonal, ErrorApi, { id: string; cambios: Partial<DatosProducto> }>({
+    mutationFn: ({ id, cambios }) => editarProducto(id, cambios),
     networkMode: 'always',
     onSuccess: (producto) => {
       clienteQuery.setQueryData(claveProducto(producto.id), producto);

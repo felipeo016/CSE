@@ -68,12 +68,15 @@ export async function obtenerPedido(id: string): Promise<Pedido | null> {
  * transacción del servidor: toma el precio según el tipo del cliente, bloquea los productos y
  * verifica el inventario antes de descontarlo. Si un producto no alcanza, responde con el hint
  * INVENTARIO_INSUFICIENTE (ya traducido a ErrorApi por api.ts) y no se crea nada.
+ * Con compra_id (migración 008) un Reintentar no crea un segundo pedido: si la compra ya quedó
+ * registrada, el servidor devuelve ese pedido; si el carrito cambió, responde COMPRA_YA_REGISTRADA.
  */
 export async function registrarPedidoCarrito(datos: DatosCompraCarrito): Promise<Pedido> {
   const cuerpo: PedidoCarritoCuerpoApi = {
     lineas: datos.lineas.map((linea) => ({ producto_id: linea.productoId, cantidad: linea.cantidad })),
     incluye_servicio: datos.servicio !== null,
     tipo_servicio: datos.servicio,
+    compra_id: datos.compraId,
   };
   const respuesta = await api.post<PedidoApi>(`${RUTA_RPC}/registrar_pedido_carrito`, cuerpo);
   return mapearPedido(respuesta.data);

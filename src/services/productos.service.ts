@@ -121,6 +121,26 @@ function cuerpoProducto(datos: DatosProducto): ProductoCuerpoApi {
 }
 
 /**
+ * Solo los campos que cambiaron → cuerpo del PATCH al editar (RNF-15). Un campo que no viene
+ * no se envía, así el servidor conserva su valor: por ejemplo, el inventario que bajó por una
+ * compra mientras el formulario estaba abierto no se sobrescribe con el valor viejo.
+ */
+function cuerpoCambios(cambios: Partial<DatosProducto>): Partial<ProductoCuerpoApi> {
+  const cuerpo: Partial<ProductoCuerpoApi> = {};
+  if (cambios.codigo !== undefined) cuerpo.codigo = textoONull(cambios.codigo)?.toUpperCase() ?? null;
+  if (cambios.nombre !== undefined) cuerpo.nombre = cambios.nombre.trim();
+  if (cambios.descripcion !== undefined) cuerpo.descripcion = textoONull(cambios.descripcion);
+  if (cambios.marca !== undefined) cuerpo.marca = cambios.marca;
+  if (cambios.categoria !== undefined) cuerpo.categoria = cambios.categoria;
+  if (cambios.costo !== undefined) cuerpo.costo = cambios.costo;
+  if (cambios.precioInstalador !== undefined) cuerpo.precio_instalador = cambios.precioInstalador;
+  if (cambios.precioClienteFinal !== undefined) cuerpo.precio_cliente_final = cambios.precioClienteFinal;
+  if (cambios.inventario !== undefined) cuerpo.inventario = cambios.inventario;
+  if (cambios.imagenUrl !== undefined) cuerpo.imagen_url = textoONull(cambios.imagenUrl);
+  return cuerpo;
+}
+
+/**
  * La tabla productos solo tiene una restricción única: el código (sin distinguir mayúsculas ni
  * espacios, 001_esquema.sql). Por eso el error 23505 se traduce al mensaje del código repetido.
  */
@@ -144,14 +164,27 @@ export async function crearProducto(datos: DatosProducto): Promise<ProductoPerso
   }
 }
 
-/** Edita un producto activo (RF-30). Devuelve el producto como quedó en el servidor. */
-export async function editarProducto(id: string, datos: DatosProducto): Promise<ProductoPersonal> {
+/**
+ * Edita un producto activo (RF-30). Recibe solo los campos que el trabajador cambió y devuelve
+ * el producto como quedó en el servidor.
+ */
+export async function editarProducto(
+  id: string,
+  cambios: Partial<DatosProducto>,
+): Promise<ProductoPersonal> {
   if (!FORMATO_UUID.test(id)) throw ERROR_NO_ENCONTRADO;
+  const cuerpo = cuerpoCambios(cambios);
   try {
-    const respuesta = await api.patch<ProductoPersonalApi[]>(RUTA_PRODUCTOS, cuerpoProducto(datos), {
-      params: { id: `eq.${id}`, activo: 'eq.true' },
-      headers: DEVOLVER_FILA,
-    });
+    // Sin cambios no hay nada que guardar: se pide el producto para confirmar que sigue activo.
+    const respuesta =
+      Object.keys(cuerpo).length === 0
+        ? await api.get<ProductoPersonalApi[]>(RUTA_PRODUCTOS, {
+            params: { select: '*', id: `eq.${id}`, activo: 'eq.true' },
+          })
+        : await api.patch<ProductoPersonalApi[]>(RUTA_PRODUCTOS, cuerpo, {
+            params: { id: `eq.${id}`, activo: 'eq.true' },
+            headers: DEVOLVER_FILA,
+          });
     // Lista vacía: no existe o ya estaba desactivado.
     const fila = respuesta.data[0];
     if (!fila) throw ERROR_NO_ENCONTRADO;

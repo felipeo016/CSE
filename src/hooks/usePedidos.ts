@@ -83,6 +83,11 @@ export function useRegistrarPedidoCarrito() {
       if (error.codigo === 'INVENTARIO_INSUFICIENTE') {
         clienteQuery.invalidateQueries({ queryKey: ['productos'] });
       }
+      // La compra anterior sí quedó registrada: Mis pedidos y el inventario ya cambiaron.
+      if (error.codigo === 'COMPRA_YA_REGISTRADA') {
+        clienteQuery.invalidateQueries({ queryKey: ['productos'] });
+        clienteQuery.invalidateQueries({ queryKey: ['pedidos'] });
+      }
     },
   });
 }

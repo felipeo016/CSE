@@ -22,6 +22,7 @@ import {
   type Categoria,
   type DatosProducto,
   type Marca,
+  type ProductoPersonal,
 } from '../../../src/models/Producto';
 import { mensajeDeError } from '../../../src/services/api';
 import type { ErrorApi } from '../../../src/types/api.types';
@@ -90,6 +91,31 @@ const MENSAJE_SIN_CONEXION = 'Sin conexión. El producto no se guardó. Revisa t
 /** Número guardado → texto del campo al editar (52000 → "52000"; null → ""). */
 function numeroATexto(valor: number | null): string {
   return valor === null ? '' : String(valor);
+}
+
+/**
+ * Compara lo que se va a guardar con el producto que se cargó y devuelve solo lo que cambió
+ * (RNF-15). Si el trabajador no tocó el inventario, no se envía: así no se sobrescriben las
+ * unidades que una compra descontó mientras el formulario estaba abierto.
+ */
+function camposCambiados(datos: DatosProducto, original: ProductoPersonal): Partial<DatosProducto> {
+  const cambios: Partial<DatosProducto> = {};
+  // Los textos se comparan como los guarda el servidor: sin espacios sobrantes y el código en mayúsculas.
+  if (datos.codigo.trim().toUpperCase() !== (original.codigo ?? '').trim().toUpperCase()) {
+    cambios.codigo = datos.codigo;
+  }
+  if (datos.nombre.trim() !== original.nombre) cambios.nombre = datos.nombre;
+  if (datos.descripcion.trim() !== (original.descripcion ?? '')) cambios.descripcion = datos.descripcion;
+  if (datos.marca !== original.marca) cambios.marca = datos.marca;
+  if (datos.categoria !== original.categoria) cambios.categoria = datos.categoria;
+  if (datos.costo !== original.costo) cambios.costo = datos.costo;
+  if (datos.precioInstalador !== original.precioInstalador) cambios.precioInstalador = datos.precioInstalador;
+  if (datos.precioClienteFinal !== original.precioClienteFinal) {
+    cambios.precioClienteFinal = datos.precioClienteFinal;
+  }
+  if (datos.inventario !== original.inventario) cambios.inventario = datos.inventario;
+  if (datos.imagenUrl.trim() !== (original.imagenUrl ?? '')) cambios.imagenUrl = datos.imagenUrl;
+  return cambios;
 }
 
 /**
@@ -253,7 +279,11 @@ function FormularioProducto({ producto }: FormularioProductoProps) {
 
     // Solo se sale del formulario cuando el servidor confirmó que guardó.
     if (producto) {
-      editar.mutate({ id: producto.id, datos }, { onSuccess: () => router.back(), onError: alFallar });
+      // Al editar se envía solo lo que cambió; al crear, todos los campos.
+      editar.mutate(
+        { id: producto.id, cambios: camposCambiados(datos, producto) },
+        { onSuccess: () => router.back(), onError: alFallar },
+      );
     } else {
       crear.mutate(datos, { onSuccess: () => router.back(), onError: alFallar });
     }

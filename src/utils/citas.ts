@@ -51,7 +51,8 @@ export function claveFranja(franja: FranjaHoraria): string {
 
 /**
  * Franja de una cita para hoy: si ya pasó su hora de inicio, no se puede elegir (decisión del
- * equipo). Solo lo valida la app; el servidor no revisa franjas.
+ * equipo). El servidor revisa lo mismo en hora de Colombia (migración 008, hint FRANJA_PASADA)
+ * y responde con este mismo texto.
  * Las horas "HH:mm" se comparan como texto: "08:00" < "10:00".
  * @param fecha "AAAA-MM-DD" elegida, o null si aún no se elige.
  * @param franja "HH:mm-HH:mm" elegida, o null si aún no se elige.
