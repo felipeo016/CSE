@@ -1,3 +1,5 @@
+import { esDiaDeAtencion, hoyTexto, textoAFecha, textoDiasAtencion } from './citas';
+
 /**
  * Validaciones de formularios. Son funciones puras: reciben el texto del campo y devuelven
  * el mensaje de error en español, o null si el valor es válido.
@@ -100,4 +102,28 @@ export function cantidadValida(valor: string, disponibles: number): ResultadoVal
  */
 export function primerError(...resultados: ResultadoValidacion[]): ResultadoValidacion {
   return resultados.find((resultado) => resultado !== null) ?? null;
+}
+
+/**
+ * Fecha de una cita (RF-27, sección 5): obligatoria, de hoy en adelante y en un día de atención
+ * (valoresPrueba). El servidor vuelve a rechazar las fechas pasadas.
+ * @param fecha "AAAA-MM-DD" o null si aún no se elige.
+ * @param hoy "AAAA-MM-DD" del teléfono; se recibe como parámetro para poder probar la función.
+ */
+export function fechaCitaValida(fecha: string | null, hoy: string = hoyTexto()): ResultadoValidacion {
+  if (fecha === null) {
+    return 'Elige la fecha de la cita';
+  }
+  const dia = textoAFecha(fecha);
+  if (!dia) {
+    return 'Elige una fecha válida';
+  }
+  // "AAAA-MM-DD" se compara como texto: "2026-11-11" < "2026-11-12".
+  if (fecha < hoy) {
+    return 'La fecha de la cita no puede ser pasada';
+  }
+  if (!esDiaDeAtencion(dia)) {
+    return `Ese día no hay atención. Elige un día de ${textoDiasAtencion()}`;
+  }
+  return null;
 }

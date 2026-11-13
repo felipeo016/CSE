@@ -4,6 +4,7 @@ import type { Feather } from '@expo/vector-icons';
 
 import type { ResultadoCalculoTotal } from '../hooks/useCalculoTotal';
 import type { LineaCarrito, ServicioCarrito } from '../models/Carrito';
+import type { Cita, EstadoCita, EstadoFinalCita } from '../models/Cita';
 import type { Cliente } from '../models/Cliente';
 import type { Coordenadas } from '../config/valoresPrueba';
 import type {
@@ -21,6 +22,7 @@ import type {
   ValoresInicialesCotizacion,
 } from '../models/FormularioCotizacion';
 import type { EstadoSeguimiento, PuntoMapa } from '../models/Mapa';
+import type { LineaPedido, Pedido } from '../models/Pedido';
 import type { ProductoPersonal, ProductoSegunRol, TipoCliente } from '../models/Producto';
 import type { Ubicacion } from '../models/Ubicacion';
 import type { Rol, Usuario } from '../models/Usuario';
@@ -507,4 +509,109 @@ export interface AccionesClienteCotizacionProps {
   cotizacion: Cotizacion;
   /** Se llama tras un error que cambió el estado en el servidor (vencida, ya respondida). */
   onEstadoCambiado: () => void;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pedidos, citas e Inicio del cliente (J6)
+// ---------------------------------------------------------------------------------------------
+
+/** Botón Confirmar pedido del carrito con el paso "Pago simulado" (RF-13). */
+export interface ConfirmarCompraCarritoProps {
+  lineas: LineaCarrito[];
+  servicio: ServicioCarrito;
+}
+
+/** Recuadro rojo con el error de una acción (enviar, comprar, agendar) y Reintentar opcional. */
+export interface AvisoErrorAccionProps {
+  titulo: string;
+  mensaje: string;
+  /** Cambia el ícono por el de "sin conexión". */
+  sinConexion?: boolean;
+  /** Si se envía, aparece el botón Reintentar. */
+  onReintentar?: () => void;
+  reintentando?: boolean;
+}
+
+/** Tarjeta de un pedido en Mis pedidos: fecha, número, total y estado (RF-14). */
+export interface TarjetaPedidoProps {
+  pedido: Pedido;
+  onPress: () => void;
+}
+
+/** Una línea del detalle de pedido. */
+export interface LineaPedidoItemProps {
+  linea: LineaPedido;
+  ultima: boolean;
+}
+
+/** Píldora de color con el estado de una cita. */
+export interface EtiquetaEstadoCitaProps {
+  estado: EstadoCita;
+}
+
+/** Píldora de color con el tipo de servicio (Instalación azul, Mantenimiento naranja). */
+export interface EtiquetaTipoServicioProps {
+  tipo: TipoServicio;
+}
+
+/**
+ * Tarjeta de una cita (Mis citas y Citas del trabajador). Con onCambiarEstado (solo personal)
+ * muestra los botones Realizada y Cancelar en las citas Programadas.
+ */
+export interface TarjetaCitaProps {
+  cita: Cita;
+  /** true: muestra el nombre del cliente (lista del trabajador). */
+  paraPersonal?: boolean;
+  onCambiarEstado?: (estado: EstadoFinalCita) => void;
+  /** true mientras se guarda el cambio de esta cita (botones bloqueados). */
+  cambiando?: boolean;
+}
+
+/** Opción elegible en forma de tarjeta (ubicación o pedido en Agendar cita). */
+export interface OpcionTarjetaProps {
+  titulo: string;
+  detalle?: string | null;
+  icono: NombreIcono;
+  elegida: boolean;
+  onPress: () => void;
+}
+
+/** Tarjeta de resumen del Inicio del cliente con su propio estado de carga y error. */
+export interface TarjetaResumenInicioProps {
+  titulo: string;
+  icono: NombreIcono;
+  cargando: boolean;
+  /** Mensaje de error si no se pudo cargar (y no hay datos guardados). */
+  error: string | null;
+  onReintentar: () => void;
+  /** Al tocar la tarjeta (por ejemplo, ir a Mis citas). */
+  onPress?: () => void;
+  children: ReactNode;
+}
+
+/** Fila con ícono y texto de la tarjeta de cita (cliente, dirección, pedido). */
+export interface DatoConIconoProps {
+  icono: NombreIcono;
+  texto: string;
+}
+
+/** Fila "ícono · etiqueta ........ valor" del resumen de la cita confirmada (mockup). */
+export interface FilaResumenCitaProps {
+  icono: NombreIcono;
+  etiqueta: string;
+  valor: string;
+}
+
+/** Pantalla "¡Cita confirmada!" con el resumen que devolvió el servidor. */
+export interface CitaConfirmadaProps {
+  cita: Cita;
+}
+
+/** Botón grande de acceso rápido del Inicio del cliente (mockup). */
+export interface BotonInicioProps {
+  texto: string;
+  icono: NombreIcono;
+  /** true: relleno azul (Solicitar cotización); false: con borde. */
+  principal?: boolean;
+  onPress: () => void;
 }
