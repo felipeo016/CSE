@@ -79,8 +79,6 @@ export const NOMBRE_FILTRO_COTIZACION: Record<FiltroEstadoCotizacion, string> = 
 /** Filtros del listado. Todos opcionales: sin filtros se listan todas las visibles para el rol. */
 export interface FiltrosCotizaciones {
   estado?: FiltroEstadoCotizacion;
-  /** Texto para buscar por nombre del cliente (solo personal). */
-  busquedaCliente?: string;
   /** Cotizaciones de un cliente (historial del detalle de cliente, F8). Solo personal. */
   clienteId?: string;
 }

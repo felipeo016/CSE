@@ -7,6 +7,16 @@ import type { ErrorApi } from '../types/api.types';
  * Estaban en useProductos (F4); se movieron aquí en F5 para no repetirlas en cada hook.
  */
 
+/**
+ * Error de una cuenta de cliente sin ficha en la tabla clientes (no debería pasar: la crea el
+ * trigger al registrarse). Las consultas "del cliente de la sesión" lo lanzan en vez de quedar
+ * deshabilitadas, que dejaría la pantalla cargando para siempre (RNF-02).
+ */
+export const ERROR_SIN_FICHA_CLIENTE: ErrorApi = {
+  tipo: 'validacion',
+  mensaje: 'Tu cuenta no tiene una ficha de cliente. Comunícate con el negocio.',
+};
+
 /** Máximo de reintentos automáticos antes de mostrar el error con el botón Reintentar. */
 const MAX_REINTENTOS = 2;
 

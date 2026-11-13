@@ -10,7 +10,12 @@ import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
 import type { CambioEstadoCita, Cita, DatosCita } from '../models/Cita';
 import type { ErrorApi } from '../types/api.types';
-import { conAvisoDeConexion, debeReintentar, type ConsultaConConexion } from '../utils/consultas';
+import {
+  conAvisoDeConexion,
+  debeReintentar,
+  ERROR_SIN_FICHA_CLIENTE,
+  type ConsultaConConexion,
+} from '../utils/consultas';
 
 /**
  * Tiempos de caché de las citas (RNF-03):
@@ -32,11 +37,14 @@ export const CLAVE_TODAS_LAS_CITAS = ['citas', 'todas'] as const;
 /** Citas del cliente de la sesión (Mis citas e Inicio). */
 export function useCitasCliente(): ConsultaConConexion<Cita[]> {
   const clienteId = useSesionStore((estado) => estado.usuario?.clienteId ?? null);
+  const hayUsuario = useSesionStore((estado) => estado.usuario !== null);
   const enLinea = useEnLinea();
   const consulta = useQuery<Cita[], ErrorApi>({
     queryKey: claveCitasCliente(clienteId),
-    queryFn: () => listarCitasCliente(clienteId ?? ''),
-    enabled: clienteId !== null,
+    // Sin ficha de cliente se responde con un error (no se deja la consulta en espera).
+    queryFn: () =>
+      clienteId === null ? Promise.reject(ERROR_SIN_FICHA_CLIENTE) : listarCitasCliente(clienteId),
+    enabled: hayUsuario,
     staleTime: STALE_TIME_CITAS_MS,
     gcTime: GC_TIME_CITAS_MS,
     retry: debeReintentar,

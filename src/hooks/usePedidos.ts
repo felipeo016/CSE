@@ -10,7 +10,12 @@ import { useSesionStore } from '../store/sesionStore';
 import { useEnLinea } from './useEnLinea';
 import type { DatosCompraCarrito, Pedido } from '../models/Pedido';
 import type { ErrorApi } from '../types/api.types';
-import { conAvisoDeConexion, debeReintentar, type ConsultaConConexion } from '../utils/consultas';
+import {
+  conAvisoDeConexion,
+  debeReintentar,
+  ERROR_SIN_FICHA_CLIENTE,
+  type ConsultaConConexion,
+} from '../utils/consultas';
 
 /**
  * Tiempos de caché de los pedidos (RNF-03):
@@ -38,11 +43,14 @@ export function clavePedido(id: string | undefined) {
  */
 export function usePedidosCliente(): ConsultaConConexion<Pedido[]> {
   const clienteId = useSesionStore((estado) => estado.usuario?.clienteId ?? null);
+  const hayUsuario = useSesionStore((estado) => estado.usuario !== null);
   const enLinea = useEnLinea();
   const consulta = useQuery<Pedido[], ErrorApi>({
     queryKey: clavePedidosCliente(clienteId),
-    queryFn: () => listarPedidosCliente(clienteId ?? ''),
-    enabled: clienteId !== null,
+    // Sin ficha de cliente se responde con un error (no se deja la consulta en espera).
+    queryFn: () =>
+      clienteId === null ? Promise.reject(ERROR_SIN_FICHA_CLIENTE) : listarPedidosCliente(clienteId),
+    enabled: hayUsuario,
     staleTime: STALE_TIME_PEDIDOS_MS,
     gcTime: GC_TIME_PEDIDOS_MS,
     retry: debeReintentar,

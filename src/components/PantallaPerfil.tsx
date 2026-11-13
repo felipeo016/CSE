@@ -34,7 +34,7 @@ export default function PantallaPerfil() {
     <SafeAreaView className="flex-1 bg-fondo">
       {consulta.isPending ? (
         <EstadoVista tipo="carga" mensaje="Cargando tu perfil…" />
-      ) : consulta.isError ? (
+      ) : consulta.isError && consulta.data === undefined ? (
         <EstadoVista
           tipo="error"
           mensaje="No se pudo cargar tu perfil"
@@ -42,7 +42,7 @@ export default function PantallaPerfil() {
           accion={{ texto: 'Reintentar', onPress: () => consulta.refetch() }}
         />
       ) : (
-        <FormularioDePerfil usuario={consulta.data} />
+        consulta.data && <FormularioDePerfil usuario={consulta.data} />
       )}
     </SafeAreaView>
   );
@@ -86,7 +86,10 @@ function FormularioDePerfil({ usuario }: FormularioPerfilProps) {
     if (nuevosErrores.nombre || nuevosErrores.telefono) {
       return;
     }
-    // mutate no se repite si ya está enviando: el botón queda bloqueado con "cargando".
+    // Sin doble envío: mientras espera la respuesta no se vuelve a enviar (el botón también se bloquea).
+    if (guardar.isPending) {
+      return;
+    }
     guardar.mutate(formulario);
   }
 
