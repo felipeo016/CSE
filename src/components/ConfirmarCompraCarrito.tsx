@@ -14,6 +14,8 @@ import type { ConfirmarCompraCarritoProps } from '../types/props.types';
 import { formatearPrecio } from '../utils/formato';
 import { rutaConfirmacionPedido } from '../utils/navegacion';
 
+const RUTA_MIS_PEDIDOS = '/(cliente)/(drawer)/mis-pedidos';
+
 /** Error de la última compra, ya listo para mostrar. */
 interface ErrorCompra {
   titulo: string;
@@ -21,20 +23,35 @@ interface ErrorCompra {
   /** true si tiene sentido repetir la compra tal cual (sin conexión o falla del servidor). */
   reintentable: boolean;
   sinConexion: boolean;
+  /** true si la compra anterior ya quedó registrada: se ofrece ir a Mis pedidos. */
+  irAMisPedidos: boolean;
 }
 
+// Sin conexión o sin respuesta a tiempo: la compra pudo quedar registrada o no, así que no se
+// afirma ninguna de las dos cosas. Reintentar es seguro porque repite el mismo identificador.
 const ERROR_SIN_CONEXION: ErrorCompra = {
-  titulo: 'Sin conexión',
+  titulo: 'No se pudo confirmar la compra',
   mensaje:
-    'No se registró el pedido y tu carrito sigue igual. Revisa tu conexión y pulsa Reintentar.',
+    'No pudimos confirmar tu compra con el servidor. Revisa tu conexión y pulsa Reintentar: es seguro, tu compra no se registrará dos veces.',
   reintentable: true,
   sinConexion: true,
+  irAMisPedidos: false,
 };
 
 /** Traduce el error del servidor a lo que ve el cliente (hints de docs/servicio-remoto.md). */
 function errorParaMostrar(error: ErrorApi): ErrorCompra {
   if (error.tipo === 'sin_conexion') {
     return ERROR_SIN_CONEXION;
+  }
+  if (error.codigo === 'COMPRA_YA_REGISTRADA') {
+    // El mensaje del servidor trae el número: "Tu compra anterior ya quedó registrada como PED-…".
+    return {
+      titulo: 'Tu compra ya estaba registrada',
+      mensaje: error.mensaje,
+      reintentable: false,
+      sinConexion: false,
+      irAMisPedidos: true,
+    };
   }
   if (error.codigo === 'INVENTARIO_INSUFICIENTE') {
     // El mensaje del servidor ya trae producto y unidades: "Solo hay 2 unidades disponibles de X".
@@ -43,6 +60,7 @@ function errorParaMostrar(error: ErrorApi): ErrorCompra {
       mensaje: `${error.mensaje.replace(/\.$/, '')}. No se registró el pedido: ajusta la cantidad o quita el producto.`,
       reintentable: false,
       sinConexion: false,
+      irAMisPedidos: false,
     };
   }
   return {
@@ -50,6 +68,7 @@ function errorParaMostrar(error: ErrorApi): ErrorCompra {
     mensaje: `${error.mensaje.replace(/\.$/, '')}. Tu carrito sigue igual.`,
     reintentable: error.tipo === 'servidor',
     sinConexion: false,
+    irAMisPedidos: false,
   };
 }
 
@@ -59,7 +78,10 @@ function errorParaMostrar(error: ErrorApi): ErrorCompra {
  * - Si sale bien: se vacía el carrito y se va a la Confirmación de pedido con el número y el total
  *   que devolvió el servidor (useRegistrarPedidoCarrito ya invalidó productos y pedidos).
  * - Si falta inventario: se muestra el producto y las unidades disponibles y no se registra nada.
- * - Sin conexión o con error: no se confirma, el carrito se conserva y se ofrece Reintentar (RNF-08).
+ * - Sin conexión o sin respuesta: no se confirma, el carrito se conserva y se ofrece Reintentar
+ *   (RNF-08). Reintentar envía el mismo identificador de compra, así que no se duplica el pedido.
+ * - Si la compra anterior ya quedó registrada y el carrito cambió (COMPRA_YA_REGISTRADA): se
+ *   muestra el número del pedido, se ofrece ir a Mis pedidos y el carrito se conserva.
  */
 export default function ConfirmarCompraCarrito({ lineas, servicio }: ConfirmarCompraCarritoProps) {
   const comprar = useRegistrarPedidoCarrito();
@@ -67,6 +89,12 @@ export default function ConfirmarCompraCarrito({ lineas, servicio }: ConfirmarCo
   const vaciar = useCarritoStore((estado) => estado.vaciar);
   // Mismo hook que el resumen: el total que se muestra en el paso de pago es el del resumen.
   const { desglose } = useCalculoTotal({ lineas, servicio });
+  // Identificador de la compra en curso (migración 008). Vive en carritoStore, que se guarda en
+  // AsyncStorage: sigue ahí aunque el cliente cierre la app después de una demora. Se crea en el
+  // primer intento, se repite en cada Reintentar (aunque el carrito cambie) y se renueva solo
+  // tras una compra exitosa (vaciar), tras COMPRA_YA_REGISTRADA o al cerrar sesión.
+  const obtenerCompraId = useCarritoStore((estado) => estado.obtenerCompraId);
+  const renovarCompraId = useCarritoStore((estado) => estado.renovarCompraId);
   const [error, setError] = useState<ErrorCompra | null>(null);
 
   function registrar() {
@@ -88,13 +116,20 @@ export default function ConfirmarCompraCarrito({ lineas, servicio }: ConfirmarCo
       {
         lineas: lineas.map((linea) => ({ productoId: linea.productoId, cantidad: linea.cantidad })),
         servicio,
+        compraId: obtenerCompraId(),
       },
       {
         onSuccess: (pedido) => {
-          vaciar();
+          vaciar(); // también renueva el identificador: la próxima compra lleva uno nuevo
           router.push(rutaConfirmacionPedido(pedido, unidades, nombreServicio));
         },
-        onError: (errorApi) => setError(errorParaMostrar(errorApi)),
+        onError: (errorApi) => {
+          // Esa compra ya terminó (quedó registrada): la próxima lleva un identificador nuevo.
+          if (errorApi.codigo === 'COMPRA_YA_REGISTRADA') {
+            renovarCompraId();
+          }
+          setError(errorParaMostrar(errorApi));
+        },
       },
     );
   }
@@ -122,6 +157,16 @@ export default function ConfirmarCompraCarrito({ lineas, servicio }: ConfirmarCo
           onReintentar={error.reintentable ? registrar : undefined}
           reintentando={comprar.isPending}
         />
+      ) : null}
+      {error?.irAMisPedidos ? (
+        <View className="mb-bloque">
+          <Boton
+            texto="Ir a Mis pedidos"
+            icono="shopping-bag"
+            variante="secundario"
+            onPress={() => router.navigate(RUTA_MIS_PEDIDOS)}
+          />
+        </View>
       ) : null}
 
       <Boton
