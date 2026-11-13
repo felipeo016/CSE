@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import AvisoConexion from '../../../../src/components/AvisoConexion';
 import BarraBusqueda from '../../../../src/components/BarraBusqueda';
 import ChipFiltro from '../../../../src/components/ChipFiltro';
 import EstadoVista from '../../../../src/components/EstadoVista';
+import FilaChips from '../../../../src/components/FilaChips';
 import TarjetaCotizacion from '../../../../src/components/TarjetaCotizacion';
 import { COLORES } from '../../../../src/config/colores';
 import { useCotizaciones } from '../../../../src/hooks/useCotizaciones';
@@ -150,23 +151,17 @@ export default function CotizacionesTrabajador() {
         </View>
       </View>
 
-      <View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="px-pantalla pb-bloque"
-        >
-          <ChipFiltro etiqueta="Todas" activo={estado === null} onPress={() => setEstado(null)} />
-          {FILTROS.map((filtro) => (
-            <ChipFiltro
-              key={filtro}
-              etiqueta={NOMBRE_FILTRO_COTIZACION[filtro]}
-              activo={estado === filtro}
-              onPress={() => setEstado(filtro)}
-            />
-          ))}
-        </ScrollView>
-      </View>
+      <FilaChips etiquetaAccesible="Filtrar por estado" className="pb-bloque">
+        <ChipFiltro etiqueta="Todas" activo={estado === null} onPress={() => setEstado(null)} />
+        {FILTROS.map((filtro) => (
+          <ChipFiltro
+            key={filtro}
+            etiqueta={NOMBRE_FILTRO_COTIZACION[filtro]}
+            activo={estado === filtro}
+            onPress={() => setEstado(filtro)}
+          />
+        ))}
+      </FilaChips>
 
       {consulta.mostrandoCache ? (
         <View className="px-pantalla">

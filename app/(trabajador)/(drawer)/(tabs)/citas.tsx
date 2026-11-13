@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AvisoConexion from '../../../../src/components/AvisoConexion';
 import ChipFiltro from '../../../../src/components/ChipFiltro';
 import EstadoVista from '../../../../src/components/EstadoVista';
+import FilaChips from '../../../../src/components/FilaChips';
 import TarjetaCita from '../../../../src/components/TarjetaCita';
 import { COLORES } from '../../../../src/config/colores';
 import { useCambiarEstadoCita, useTodasLasCitas } from '../../../../src/hooks/useCitas';
@@ -157,12 +158,7 @@ export default function CitasTrabajador() {
     <SafeAreaView className="flex-1 bg-fondo">
       <View className="px-pantalla pt-4">
         <Text className="font-titulo text-3xl text-texto">Citas</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="my-bloque flex-grow-0"
-          accessibilityRole="tablist"
-        >
+        <FilaChips etiquetaAccesible="Filtrar citas" conMargenLateral={false} className="my-bloque">
           {FILTROS.map((opcion) => (
             <ChipFiltro
               key={opcion.valor}
@@ -171,7 +167,7 @@ export default function CitasTrabajador() {
               onPress={() => setFiltro(opcion.valor)}
             />
           ))}
-        </ScrollView>
+        </FilaChips>
         {consulta.mostrandoCache ? (
           <AvisoConexion mensaje="Sin conexión. Se muestran los últimos datos guardados." />
         ) : null}

@@ -316,6 +316,16 @@ export interface ChipFiltroProps {
   onPress: () => void;
 }
 
+/** Fila horizontal de chips de filtro. */
+export interface FilaChipsProps {
+  children: ReactNode;
+  etiquetaAccesible?: string;
+  /** Agrega el margen lateral de la pantalla (px-pantalla) al contenido. */
+  conMargenLateral?: boolean;
+  /** Margen exterior de la fila, por ejemplo "pt-bloque". */
+  className?: string;
+}
+
 /** Precios que ve el personal en el detalle: cliente final, instalador y costo. */
 export interface PreciosPersonalProps {
   producto: ProductoPersonal;
