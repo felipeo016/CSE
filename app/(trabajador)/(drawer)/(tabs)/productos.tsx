@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import AvisoConexion from '../../../../src/components/AvisoConexion';
 import BarraBusqueda from '../../../../src/components/BarraBusqueda';
 import ChipFiltro from '../../../../src/components/ChipFiltro';
 import EstadoVista from '../../../../src/components/EstadoVista';
+import FilaChips from '../../../../src/components/FilaChips';
 import MarcasRevision from '../../../../src/components/MarcasRevision';
 import TarjetaProducto from '../../../../src/components/TarjetaProducto';
 import { COLORES } from '../../../../src/config/colores';
@@ -178,13 +179,7 @@ export default function Productos() {
       </View>
 
       {/* Filtro de categoría (RF-07) y "Por revisar", en una fila que se desplaza de lado. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerClassName="px-pantalla pt-bloque"
-        className="flex-grow-0"
-        accessibilityLabel="Filtrar productos"
-      >
+      <FilaChips etiquetaAccesible="Filtrar productos" className="pt-bloque">
         <ChipFiltro
           etiqueta={`Por revisar (${totalPorRevisar})`}
           activo={soloPorRevisar}
@@ -198,7 +193,7 @@ export default function Productos() {
             onPress={() => setCategoria(opcion.valor)}
           />
         ))}
-      </ScrollView>
+      </FilaChips>
 
       <View className="px-pantalla pt-bloque">
         {consulta.mostrandoCache ? (

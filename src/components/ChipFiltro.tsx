@@ -9,11 +9,12 @@ export default function ChipFiltro({ etiqueta, activo, onPress }: ChipFiltroProp
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: activo }}
-      className={`mr-2 h-10 items-center justify-center rounded-boton border px-4 active:opacity-80 ${
+      // shrink-0: el chip nunca se achica; conserva su alto y su texto completo.
+      className={`mr-2 h-10 shrink-0 items-center justify-center rounded-boton border px-4 active:opacity-80 ${
         activo ? 'border-primario bg-primario' : 'border-borde bg-fondo'
       }`}
     >
-      <Text className={`font-cuerpo-medio text-sm ${activo ? 'text-fondo' : 'text-texto'}`}>
+      <Text numberOfLines={1} className={`font-cuerpo-medio text-sm ${activo ? 'text-fondo' : 'text-texto'}`}>
         {etiqueta}
       </Text>
     </Pressable>

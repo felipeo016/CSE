@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import AvisoConexion from '../../../../src/components/AvisoConexion';
 import BarraBusqueda from '../../../../src/components/BarraBusqueda';
 import ChipFiltro from '../../../../src/components/ChipFiltro';
 import EstadoVista from '../../../../src/components/EstadoVista';
+import FilaChips from '../../../../src/components/FilaChips';
 import TarjetaProducto from '../../../../src/components/TarjetaProducto';
 import { COLORES } from '../../../../src/config/colores';
 import { FILTROS_CATEGORIA, FILTROS_MARCA } from '../../../../src/config/filtrosCatalogo';
@@ -163,13 +164,7 @@ export default function Catalogo() {
       </View>
 
       {/* Filtros en filas que se desplazan de lado, como los chips del mockup. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerClassName="px-pantalla pt-bloque"
-        className="flex-grow-0"
-        accessibilityLabel="Filtrar por categoría"
-      >
+      <FilaChips etiquetaAccesible="Filtrar por categoría" className="pt-bloque">
         {FILTROS_CATEGORIA.map((opcion) => (
           <ChipFiltro
             key={opcion.etiqueta}
@@ -178,14 +173,8 @@ export default function Catalogo() {
             onPress={() => setCategoria(opcion.valor)}
           />
         ))}
-      </ScrollView>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerClassName="px-pantalla pt-2"
-        className="flex-grow-0"
-        accessibilityLabel="Filtrar por marca"
-      >
+      </FilaChips>
+      <FilaChips etiquetaAccesible="Filtrar por marca" className="pt-2">
         {FILTROS_MARCA.map((opcion) => (
           <ChipFiltro
             key={opcion.etiqueta}
@@ -194,7 +183,7 @@ export default function Catalogo() {
             onPress={() => setMarca(opcion.valor)}
           />
         ))}
-      </ScrollView>
+      </FilaChips>
 
       <View className="px-pantalla pt-bloque">
         {consulta.mostrandoCache ? (
