@@ -8,7 +8,6 @@ import EstadoVista from '../../../../src/components/EstadoVista';
 import TarjetaCita from '../../../../src/components/TarjetaCita';
 import { COLORES } from '../../../../src/config/colores';
 import { useCambiarEstadoCita, useTodasLasCitas } from '../../../../src/hooks/useCitas';
-import { useEnLinea } from '../../../../src/hooks/useEnLinea';
 import { useRecargarAlVolver } from '../../../../src/hooks/useRecargarAlVolver';
 import {
   NOMBRE_ESTADO_CITA,
@@ -37,7 +36,6 @@ const MENSAJE_SIN_CONEXION = 'Sin conexión. El estado de la cita no cambió. Re
 export default function CitasTrabajador() {
   const consulta = useTodasLasCitas();
   const cambiar = useCambiarEstadoCita();
-  const enLinea = useEnLinea();
   const [filtro, setFiltro] = useState<FiltroEstadoCita>('todas');
   useRecargarAlVolver(consulta.refetch);
 
@@ -53,11 +51,9 @@ export default function CitasTrabajador() {
     if (cambiar.isPending) {
       return;
     }
-    // Sin conexión no se intenta: el estado no cambia y se ofrece Reintentar (RNF-08).
-    if (!enLinea) {
-      mostrarError(cita, estado, MENSAJE_SIN_CONEXION);
-      return;
-    }
+    // Sin conexión la mutación falla enseguida con "sin_conexion" (networkMode 'always'): el
+    // estado no cambia y se ofrece Reintentar (RNF-08). No se revisa aquí la conexión guardada
+    // en el render, porque Reintentar usaría ese valor viejo aunque la red ya hubiera vuelto.
     cambiar.mutate(
       { id: cita.id, estado },
       {

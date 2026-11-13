@@ -78,8 +78,9 @@ const ERROR_SIN_CONEXION: ErrorEnvio = {
 
 /**
  * Agendar cita (RF-27), flujo Stack del cliente: tipo de servicio, fecha (selector de fecha),
- * franja horaria, ubicación registrada y, para instalación, el pedido asociado (opcional).
+ * franja horaria, ubicación registrada y el pedido asociado (opcional).
  * - Si llega pedidoId (desde la Confirmación de pedido o el Detalle de pedido), viene preseleccionado.
+ * - Si llega tipo (Detalle de pedido con servicio), también se preselecciona el tipo.
  * - Se rechazan fechas pasadas, días sin atención, franjas de hoy que ya empezaron, campos vacíos
  *   y citas sin ubicación.
  * - La cita queda Programada solo con la respuesta del servidor (RNF-08).
@@ -96,9 +97,12 @@ export default function AgendarCita() {
 }
 
 function FormularioCita() {
-  const parametros = useLocalSearchParams<{ pedidoId?: string }>();
+  const parametros = useLocalSearchParams<{ pedidoId?: string; tipo?: string }>();
   // Solo se preselecciona un id con formato válido; el servidor además valida que sea del cliente.
   const pedidoInicial = parametros.pedidoId && esUuid(parametros.pedidoId) ? parametros.pedidoId : null;
+  // Tipo que llega del Detalle de pedido (el servicio del pedido); cualquier otro valor se ignora.
+  const tipoRecibido: TipoServicio | null =
+    parametros.tipo === 'instalacion' || parametros.tipo === 'mantenimiento' ? parametros.tipo : null;
 
   const clienteId = useSesionStore((estado) => estado.usuario?.clienteId ?? null);
   const ubicaciones = useUbicacionesCliente(clienteId);
@@ -106,8 +110,11 @@ function FormularioCita() {
   const crear = useCrearCita();
   const enLinea = useEnLinea();
 
-  // Con un pedido preseleccionado la cita es de instalación (sección 5).
-  const [tipo, setTipo] = useState<TipoServicio | null>(pedidoInicial ? 'instalacion' : null);
+  // El tipo recibido manda; si solo llega un pedido (Confirmación de pedido), la cita es de
+  // instalación (sección 5).
+  const [tipo, setTipo] = useState<TipoServicio | null>(
+    tipoRecibido ?? (pedidoInicial ? 'instalacion' : null),
+  );
   const [fecha, setFecha] = useState<string | null>(null);
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
   const [franja, setFranja] = useState<string | null>(null);
@@ -201,8 +208,9 @@ function FormularioCita() {
         fecha,
         franja,
         ubicacionId,
-        // El pedido asociado solo aplica a instalación; el mantenimiento no exige compra.
-        pedidoId: tipo === 'instalacion' ? pedidoId : null,
+        // Pedido asociado opcional en los dos tipos: el mantenimiento no exige compra, pero puede
+        // ser de un pedido que lo incluyó (sección 5, RF-27).
+        pedidoId,
       },
       { onError: alFallar },
     );
@@ -380,7 +388,7 @@ function FormularioCita() {
           ) : null}
         </View>
 
-        {tipo === 'instalacion' ? seccionPedido() : null}
+        {tipo !== null ? seccionPedido() : null}
 
         {errorEnvio ? (
           <AvisoErrorAccion

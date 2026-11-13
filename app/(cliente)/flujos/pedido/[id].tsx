@@ -121,7 +121,13 @@ function ContenidoPedido({ id }: ContenidoPorIdProps) {
         texto="Agendar cita"
         icono="calendar"
         onPress={() =>
-          router.push({ pathname: '/(cliente)/flujos/agendar-cita', params: { pedidoId: pedido.id } })
+          router.push({
+            pathname: '/(cliente)/flujos/agendar-cita',
+            // Se preselecciona el pedido y, si lo tiene, su servicio (instalación o mantenimiento).
+            params: pedido.tipoServicio
+              ? { pedidoId: pedido.id, tipo: pedido.tipoServicio }
+              : { pedidoId: pedido.id },
+          })
         }
       />
     </ScrollView>
