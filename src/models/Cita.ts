@@ -48,7 +48,7 @@ export interface DatosCita {
   /** "HH:mm-HH:mm". */
   franja: string;
   ubicacionId: string;
-  /** Pedido asociado (opcional, solo instalación). */
+  /** Pedido asociado (opcional, en instalación y en mantenimiento). */
   pedidoId: string | null;
 }
 
