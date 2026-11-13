@@ -45,6 +45,25 @@ export function useCitasCliente(): ConsultaConConexion<Cita[]> {
   return conAvisoDeConexion(consulta, enLinea);
 }
 
+/**
+ * Citas de un cliente elegido, para el trabajador y el administrador (historial del Detalle de
+ * cliente, RF-33; F8). Mismo servicio y misma queryKey que Mis citas, con el id del cliente.
+ */
+export function useCitasDeCliente(clienteId: string | undefined): ConsultaConConexion<Cita[]> {
+  const hayUsuario = useSesionStore((estado) => estado.usuario !== null);
+  const enLinea = useEnLinea();
+  const consulta = useQuery<Cita[], ErrorApi>({
+    queryKey: claveCitasCliente(clienteId ?? null),
+    queryFn: () => listarCitasCliente(clienteId ?? ''),
+    enabled: hayUsuario && clienteId !== undefined && clienteId.length > 0,
+    staleTime: STALE_TIME_CITAS_MS,
+    gcTime: GC_TIME_CITAS_MS,
+    retry: debeReintentar,
+    networkMode: 'always',
+  });
+  return conAvisoDeConexion(consulta, enLinea);
+}
+
 /** Todas las citas, para el trabajador y el administrador (pestaña Citas, RF-28). */
 export function useTodasLasCitas(): ConsultaConConexion<Cita[]> {
   const hayUsuario = useSesionStore((estado) => estado.usuario !== null);

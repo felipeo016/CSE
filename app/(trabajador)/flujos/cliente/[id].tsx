@@ -2,11 +2,13 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 
 import AvatarIniciales from '../../../../src/components/AvatarIniciales';
 import AvisoConexion from '../../../../src/components/AvisoConexion';
 import Boton from '../../../../src/components/Boton';
 import EstadoVista from '../../../../src/components/EstadoVista';
+import HistorialCliente from '../../../../src/components/HistorialCliente';
 import RutaProtegida from '../../../../src/components/RutaProtegida';
 import { COLORES } from '../../../../src/config/colores';
 import { useCliente } from '../../../../src/hooks/useClientes';
@@ -20,8 +22,8 @@ import { formatearTelefono } from '../../../../src/utils/formato';
 import { ROLES_PERSONAL } from '../../../../src/utils/navegacion';
 
 /**
- * Detalle de cliente (RF-33), ruta dinámica por id. Muestra sus datos y el botón Editar.
- * Las ubicaciones y el historial de cotizaciones, pedidos y citas los completa F8.
+ * Detalle de cliente (RF-33), ruta dinámica por id. Muestra sus datos, el botón Editar (F5) y sus
+ * ubicaciones e historial de cotizaciones, pedidos y citas, solo de ese cliente (F8).
  */
 export default function DetalleClientePantalla() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,6 +41,7 @@ export default function DetalleClientePantalla() {
 
 function ContenidoDetalle({ id }: ContenidoPorIdProps) {
   const consulta = useCliente(id);
+  const clienteQuery = useQueryClient();
 
   if (consulta.isPending) {
     return <EstadoVista tipo="carga" mensaje="Cargando cliente…" />;
@@ -73,6 +76,11 @@ function ContenidoDetalle({ id }: ContenidoPorIdProps) {
           refreshing={consulta.isRefetching}
           onRefresh={() => {
             void consulta.refetch();
+            // Deslizar también recarga el historial (cada lista vuelve a pedir lo suyo).
+            void clienteQuery.invalidateQueries({ queryKey: ['ubicaciones'] });
+            void clienteQuery.invalidateQueries({ queryKey: ['cotizaciones'] });
+            void clienteQuery.invalidateQueries({ queryKey: ['pedidos'] });
+            void clienteQuery.invalidateQueries({ queryKey: ['citas'] });
           }}
           colors={[COLORES.primario]}
         />
@@ -95,13 +103,8 @@ function ContenidoDetalle({ id }: ContenidoPorIdProps) {
         />
       </View>
 
-      {/* Ubicaciones e historial: los completa F8 (RF-33). */}
-      <Text className="mb-2 mt-seccion font-titulo-semi text-xl text-texto">Historial</Text>
-      <View className="rounded-tarjeta border border-borde bg-superficie p-4">
-        <Text className="font-cuerpo text-base text-texto-suave">
-          Ubicaciones, cotizaciones, pedidos y citas del cliente: En construcción — F8
-        </Text>
-      </View>
+      {/* Ubicaciones e historial de cotizaciones, pedidos y citas, solo de este cliente (RF-33, F8). */}
+      <HistorialCliente clienteId={cliente.id} />
     </ScrollView>
   );
 }

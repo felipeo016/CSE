@@ -10,6 +10,7 @@
   ],
   "exclude": [
     "node_modules",
-    "referencia-clase"
+    "referencia-clase",
+    "supabase/functions"
   ]
 }

@@ -109,6 +109,11 @@ export default function RootLayout() {
             name="(trabajador)/flujos/ubicacion-form"
             options={{ ...OPCIONES_ENCABEZADO_STACK, title: 'Registrar ubicación' }}
           />
+          {/* Solo del administrador (F8): crear y editar usuarios (RF-34). */}
+          <Stack.Screen
+            name="(trabajador)/flujos/usuario-form"
+            options={{ ...OPCIONES_ENCABEZADO_STACK, title: 'Formulario de usuario' }}
+          />
 
           {/* Rutas dinámicas por identificador, de todos los roles con sesión. */}
           <Stack.Screen

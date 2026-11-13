@@ -7,14 +7,16 @@ import { formatearFecha, formatearPrecio } from '../utils/formato';
 
 /**
  * Tarjeta de un pedido en Mis pedidos (RF-14): número, estado, fecha, origen y total.
- * Mismo estilo que la tarjeta de cotización del mockup.
+ * Mismo estilo que la tarjeta de cotización del mockup. Sin onPress (historial del detalle de
+ * cliente, F8) no se puede pulsar y no lleva la flecha.
  */
 export default function TarjetaPedido({ pedido, onPress }: TarjetaPedidoProps) {
   const unidades = pedido.unidades === 1 ? '1 unidad' : `${pedido.unidades} unidades`;
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
+      disabled={onPress === undefined}
+      accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`Pedido ${pedido.numero}, ${pedido.estadoNombre}`}
       className="mb-bloque rounded-tarjeta border border-borde bg-fondo p-4 active:opacity-80"
     >
@@ -35,7 +37,7 @@ export default function TarjetaPedido({ pedido, onPress }: TarjetaPedidoProps) {
 
       <View className="mt-2 flex-row items-center justify-between">
         <Text className="font-titulo-semi text-xl text-texto">{formatearPrecio(pedido.total)}</Text>
-        <Feather name="chevron-right" size={22} color={COLORES.textoSuave} />
+        {onPress ? <Feather name="chevron-right" size={22} color={COLORES.textoSuave} /> : null}
       </View>
     </Pressable>
   );

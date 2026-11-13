@@ -42,3 +42,8 @@ export const COORDENADAS_NEGOCIO: Coordenadas = {
   latitud: 4.92261613391541,
   longitud: -75.06546509423036,
 };
+
+// VALOR DE PRUEBA — [Por confirmar con el cliente] (RF-35)
+// Stock bajo en el Panel general: productos activos con 1 a 2 unidades (el mockup no muestra el
+// umbral). Los de 0 unidades ya se ven como "Agotado" y no se cuentan aquí.
+export const UMBRAL_STOCK_BAJO = 2;

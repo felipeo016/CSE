@@ -1,0 +1,487 @@
+Prueba F8 — Costo histórico de las ventas (supabase/migrations/009_costo_ventas.sql), Panel general (RF-35)
+y pasos de base de datos de la Edge Function admin-usuarios (RF-34)
+Fecha: 2026-11-13 (hora de Colombia). Responsable: Felipe.
+
+PARTE A. PostgreSQL 16 local (Docker, contenedor temporal ya borrado) con una imitación mínima de Supabase
+(roles anon, authenticated, service_role y supabase_auth_admin; permisos por defecto de Supabase en public;
+auth.users y auth.uid()). Orden: 001 a 008, usuarios de prueba (como Authentication > Add user),
+datos_prueba.sql (partes 1, 2 y 3), una compra ANTES de 009 (movida al mes anterior, como los pedidos que ya
+existen en el proyecto real), 009 y 009 otra vez (se puede repetir).
+Cada caso actúa como el usuario indicado con set role authenticated y request.jwt.claims (lo mismo que llega por
+/rest/v1). La llave secreta de la Edge Function entra a PostgREST como service_role: los casos F1 a F6 repiten
+como service_role los pasos que hace la función en la base.
+Los "ERROR" que aparecen son los esperados: cada caso dice antes qué error se espera.
+
+Ejemplo comprobado a mano: ganancia = (precio de venta − costo) × unidades
+  Mes anterior (caso 8): 2 cámaras bala a cliente final, precio 70.000, costo al vender 48.000
+                         (70.000 − 48.000) × 2 = 22.000 × 2 = 44.000  → la RPC devuelve 44000.00
+                         Hoy el costo es 55.000 (caso 3) y luego 60.000 (caso 11): la ganancia de ese mes sigue
+                         en 44.000. Con la versión de 003 (costo actual) habría dado (70.000 − 55.000) × 2 = 30.000.
+  Mes actual (caso 9):   cámara bala   (70.000 − 55.000)   × 3 =  45.000
+                         DVR 8 canales (270.000 − 230.000) × 1 =  40.000  (venta a instalador)
+                         kit alarma    (720.000 − 520.000) × 1 = 200.000  (cotización aceptada)
+                         Total ganancia 285.000; ventas 210.000 + 270.000 + 720.000 = 1.200.000
+                         (270.000 a instalador y 930.000 a cliente final) → coincide con la RPC.
+  Mes sin ventas (caso 10): todo en 0, sin error.
+
+aplicada 00_supabase_mock.sql
+aplicada 001_esquema.sql
+aplicada 002_seguridad.sql
+aplicada 003_funciones.sql
+aplicada 004_ajustes_seguridad.sql
+aplicada 005_solicitud_cotizacion.sql
+aplicada 006_borrador_cotizacion.sql
+aplicada 007_borrador_oculto_cliente.sql
+aplicada 008_compras_y_citas.sql
+aplicada 10_usuarios.sql (cliente, trabajador y admin, como Authentication > Add user)
+aplicada datos_prueba.sql (partes 1, 2 y 3)
+
+Null display is "(null)".
+=== Antes de 009: el cliente (final) compra 2 cámaras bala DS-2CE16D0T-IRPF (precio final 70000, costo 48000)
+BEGIN
+SET
+  numero   | subtotal  |   total   
+-----------+-----------+-----------
+ PED-00001 | 140000.00 | 166600.00
+(1 row)
+
+COMMIT
+UPDATE 1
+  numero   | fecha_colombia 
+-----------+----------------
+ PED-00001 | 2026-10-22
+(1 row)
+
+
+aplicada 009_costo_ventas.sql
+  segunda vez: NOTICE:  relation "pedido_lineas_costo" already exists, skipping
+  segunda vez: NOTICE:  Costo guardado para todas las líneas de pedido (1).
+aplicada 009_costo_ventas.sql por segunda vez (sin errores: se puede repetir)
+
+Null display is "(null)".
+Mes actual: 2026-11-01 a 2026-11-30 | Mes anterior: 2026-10-01 a 2026-10-31 | Mes sin ventas: 2026-05-01 a 2026-05-31
+
+=== 1. Estructura: RLS activa en pedido_lineas_costo, permisos por rol y trigger
+       relname       | rls 
+---------------------+-----
+ pedido_lineas_costo | t
+(1 row)
+
+    rolname    | puede_leer | puede_insertar | puede_editar | puede_borrar 
+---------------+------------+----------------+--------------+--------------
+ anon          | f          | f              | f            | f
+ authenticated | t          | f              | f            | f
+(2 rows)
+
+           funcion           | anon | authenticated 
+-----------------------------+------+---------------
+ pedido_lineas_guardar_costo | f    | f
+ ventas_y_ganancias          | f    | t
+(2 rows)
+
+             tgname             
+--------------------------------
+ pedido_lineas_10_guardar_costo
+(1 row)
+
+
+=== 2. Línea existente antes de 009: se llenó con el costo de ese momento (48000)
+  numero   |      nombre_producto       | precio_unitario | cantidad | costo_unitario 
+-----------+----------------------------+-----------------+----------+----------------
+ PED-00001 | Cámara bala Turbo HD 1080p |        70000.00 |        2 |       48000.00
+(1 row)
+
+
+=== 3. TRABAJADOR sube el costo de la cámara bala de 48000 a 55000
+BEGIN
+SET
+      codigo      |  costo   
+------------------+----------
+ DS-2CE16D0T-IRPF | 55000.00
+(1 row)
+
+UPDATE 1
+COMMIT
+
+=== 4. CLIENTE final compra 3 cámaras bala (precio 70000). El trigger guarda el costo nuevo (55000)
+BEGIN
+SET
+  numero   | subtotal  
+-----------+-----------
+ PED-00002 | 210000.00
+(1 row)
+
+COMMIT
+
+=== 5. Venta a INSTALADOR: el trabajador pasa al cliente a instalador y el cliente compra 1 DVR 8 canales
+    (precio instalador 270000, costo 230000). Después vuelve a final.
+BEGIN
+SET
+      nombre       |    tipo    
+-------------------+------------
+ Cliente de prueba | instalador
+(1 row)
+
+UPDATE 1
+COMMIT
+BEGIN
+SET
+  numero   | subtotal  
+-----------+-----------
+ PED-00003 | 270000.00
+(1 row)
+
+COMMIT
+BEGIN
+SET
+UPDATE 1
+COMMIT
+
+=== 6. Cotización aceptada: el trabajador cotiza 1 kit de alarma (precio final 720000, costo 520000),
+    la envía y el cliente la acepta. El pedido de la cotización también guarda el costo.
+BEGIN
+SET
+  numero   | estado | subtotal  
+-----------+--------+-----------
+ COT-00002 | nueva  | 720000.00
+(1 row)
+
+UPDATE 1
+COMMIT
+BEGIN
+SET
+  numero   |   origen   | subtotal  
+-----------+------------+-----------
+ PED-00004 | cotizacion | 720000.00
+(1 row)
+
+COMMIT
+
+=== 7. Todas las líneas con su costo guardado (como postgres) y la ganancia calculada a mano
+  numero   | tipo_cliente |   origen   |          nombre_producto          | precio_unitario | cantidad | costo_unitario | ganancia_a_mano 
+-----------+--------------+------------+-----------------------------------+-----------------+----------+----------------+-----------------
+ PED-00001 | final        | carrito    | Cámara bala Turbo HD 1080p        |        70000.00 |        2 |       48000.00 |        44000.00
+ PED-00002 | final        | carrito    | Cámara bala Turbo HD 1080p        |        70000.00 |        3 |       55000.00 |        45000.00
+ PED-00003 | instalador   | carrito    | DVR 8 canales Turbo HD 1080p Lite |       270000.00 |        1 |      230000.00 |        40000.00
+ PED-00004 | final        | cotizacion | Kit de alarma inalámbrica AX PRO  |       720000.00 |        1 |      520000.00 |       200000.00
+(4 rows)
+
+
+=== 8. ADMIN: ventas_y_ganancias del MES ANTERIOR. Esperado: cámara bala 2 u. a final, ventas 140000,
+    ganancia (70000 - 48000) x 2 = 44000 aunque hoy el costo sea 55000 (con la versión de 003 daba 30000)
+BEGIN
+SET
+      codigo      |           nombre           | unidades_instalador | ventas_instalador | unidades_final | ventas_final | unidades_total | ventas_total | ganancia 
+------------------+----------------------------+---------------------+-------------------+----------------+--------------+----------------+--------------+----------
+ DS-2CE16D0T-IRPF | Cámara bala Turbo HD 1080p |                   0 |                 0 |              2 |    140000.00 |              2 |    140000.00 | 44000.00
+(1 row)
+
+COMMIT
+
+=== 9. ADMIN: ventas_y_ganancias del MES ACTUAL. Esperado:
+    cámara bala: 3 u. a final, 210000, ganancia (70000 - 55000) x 3 = 45000
+    DVR 8 canales: 1 u. a instalador, 270000, ganancia (270000 - 230000) x 1 = 40000
+    kit alarma: 1 u. a final, 720000, ganancia (720000 - 520000) x 1 = 200000
+BEGIN
+SET
+      codigo       |              nombre               | unidades_instalador | ventas_instalador | unidades_final | ventas_final | unidades_total | ventas_total | ganancia  
+-------------------+-----------------------------------+---------------------+-------------------+----------------+--------------+----------------+--------------+-----------
+ DS-PWA64-KIT-WB   | Kit de alarma inalámbrica AX PRO  |                   0 |                 0 |              1 |    720000.00 |              1 |    720000.00 | 200000.00
+ DS-7208HGHI-M1(C) | DVR 8 canales Turbo HD 1080p Lite |                   1 |         270000.00 |              0 |            0 |              1 |    270000.00 |  40000.00
+ DS-2CE16D0T-IRPF  | Cámara bala Turbo HD 1080p        |                   0 |                 0 |              3 |    210000.00 |              3 |    210000.00 |  45000.00
+(3 rows)
+
+    Totales del mes (los que suma la app arriba del panel). Esperado: 5 u., 270000 a instalador,
+    930000 a final, 1200000 en ventas y 285000 de ganancia
+ unidades | ventas_instalador | ventas_final |   ventas   | ganancia  
+----------+-------------------+--------------+------------+-----------
+        5 |         270000.00 |    930000.00 | 1200000.00 | 285000.00
+(1 row)
+
+COMMIT
+
+=== 10. ADMIN: periodo SIN ventas. Esperado: sin error, todas las filas en cero
+BEGIN
+SET
+ productos | unidades | ventas | ganancia 
+-----------+----------+--------+----------
+        15 |        0 |      0 |        0
+(1 row)
+
+COMMIT
+
+=== 11. El mes anterior NO cambia si el costo del producto cambia otra vez (sube a 60000). Esperado: 44000
+BEGIN
+SET
+UPDATE 1
+COMMIT
+BEGIN
+SET
+      codigo      | unidades_total | ganancia 
+------------------+----------------+----------
+ DS-2CE16D0T-IRPF |              2 | 44000.00
+(1 row)
+
+COMMIT
+
+=== 12. Fechas al revés. Esperado: ERROR La fecha inicial no puede ser mayor que la final
+BEGIN
+SET
+ERROR:  La fecha inicial no puede ser mayor que la final
+HINT:  DATOS_INVALIDOS
+CONTEXT:  PL/pgSQL function public.ventas_y_ganancias(date,date) line 10 at RAISE
+ROLLBACK
+
+=== 13. CLIENTE: no ve costos guardados (0 filas aunque ve sus 4 líneas de pedido) ni ganancias (Acceso no autorizado)
+BEGIN
+SET
+ costos_visibles_cliente | sus_lineas_de_pedido 
+-------------------------+----------------------
+                       0 |                    4
+(1 row)
+
+ERROR:  Acceso no autorizado
+HINT:  ACCESO_NO_AUTORIZADO
+CONTEXT:  PL/pgSQL function public.ventas_y_ganancias(date,date) line 7 at RAISE
+ROLLBACK
+
+=== 14. CLIENTE no puede escribir costos. Esperado: ERROR permission denied for table pedido_lineas_costo
+BEGIN
+SET
+ERROR:  permission denied for table pedido_lineas_costo
+ROLLBACK
+
+=== 15. CLIENTE no puede llamar la función del trigger. Esperado: ERROR permission denied for function
+BEGIN
+SET
+ERROR:  permission denied for function pedido_lineas_guardar_costo
+ROLLBACK
+
+=== 16. TRABAJADOR: lee los costos (es personal), pero ventas_y_ganancias sigue siendo solo del administrador
+BEGIN
+SET
+ costos_visibles_trabajador 
+----------------------------
+                          4
+(1 row)
+
+ERROR:  Acceso no autorizado
+HINT:  ACCESO_NO_AUTORIZADO
+CONTEXT:  PL/pgSQL function public.ventas_y_ganancias(date,date) line 7 at RAISE
+ROLLBACK
+
+=== 17. TRABAJADOR tampoco edita costos guardados. Esperado: ERROR permission denied
+BEGIN
+SET
+ERROR:  permission denied for table pedido_lineas_costo
+ROLLBACK
+
+=== 18. Sin sesión (anon). Esperado: ERROR permission denied en la tabla y en la función
+BEGIN
+SET
+ERROR:  permission denied for table pedido_lineas_costo
+ROLLBACK
+BEGIN
+SET
+ERROR:  permission denied for function ventas_y_ganancias
+ROLLBACK
+
+Null display is "(null)".
+=== F1. Crear un TRABAJADOR: Auth crea el usuario (el trigger le da perfil cliente y ficha de cliente)
+INSERT 0 1
+          correo           |     nombre     |  telefono  |   rol   | activo | tiene_ficha |  ficha_nombre  | ficha_enlazada 
+---------------------------+----------------+------------+---------+--------+-------------+----------------+----------------
+ nuevo.trabajador@cse.test | Carlos Ramírez | 3114567890 | cliente | t      | t           | Carlos Ramírez | t
+(1 row)
+
+    La función pone el rol, desenlaza y borra la ficha (como la parte 2 del seed)
+BEGIN
+SET
+          correo           |    rol     | cliente_id 
+---------------------------+------------+------------
+ nuevo.trabajador@cse.test | trabajador | (null)
+(1 row)
+
+UPDATE 1
+ ficha_borrada  
+----------------
+ Carlos Ramírez
+(1 row)
+
+DELETE 1
+COMMIT
+ fichas_que_quedan 
+-------------------
+                 0
+(1 row)
+
+
+=== F2. Crear un CLIENTE: queda con perfil cliente y su ficha (no se toca nada más)
+INSERT 0 1
+         correo         |   rol   |    ficha    | tipo  
+------------------------+---------+-------------+-------
+ nueva.cliente@cse.test | cliente | Laura Gómez | final
+(1 row)
+
+
+=== F3. Editar: el trabajador pasa a CLIENTE. No tiene ficha: la función crea una con usuario_id y la enlaza
+BEGIN
+SET
+INSERT 0 1
+UPDATE 1
+COMMIT
+    (clientes_proteger solo borra usuario_id cuando inserta la app como authenticated)
+   rol   |      perfil       | ficha_sincronizada | ficha_enlazada 
+---------+-------------------+--------------------+----------------
+ cliente | Carlos Ramírez T. | Carlos Ramírez T.  | t
+(1 row)
+
+
+=== F4. Último administrador. Hay uno solo activo (admin@cse.test). Desactivarlo o quitarle el rol con la
+    llave secreta. Esperado: ERROR Debe quedar al menos un administrador activo (HINT ULTIMO_ADMINISTRADOR)
+BEGIN
+SET
+ERROR:  P0001: Debe quedar al menos un administrador activo
+HINT:  ULTIMO_ADMINISTRADOR
+CONTEXT:  PL/pgSQL function public.perfiles_exigir_administrador() line 8 at RAISE
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ROLLBACK
+BEGIN
+SET
+ERROR:  P0001: Debe quedar al menos un administrador activo
+HINT:  ULTIMO_ADMINISTRADOR
+CONTEXT:  PL/pgSQL function public.perfiles_exigir_administrador() line 8 at RAISE
+LOCATION:  exec_stmt_raise, pl_exec.c:3897
+ROLLBACK
+
+=== F5. Con un segundo administrador sí se puede desactivar al primero; y el administrador INACTIVO
+    ya no pasa la revisión de rol (rol_actual() = null), que es lo que la función revisa al llamarla
+INSERT 0 1
+BEGIN
+SET
+UPDATE 1
+DELETE 1
+     correo     |      rol      | activo 
+----------------+---------------+--------
+ admin@cse.test | administrador | f
+(1 row)
+
+UPDATE 1
+COMMIT
+BEGIN
+SET
+ rol_del_admin_inactivo 
+------------------------
+ (null)
+(1 row)
+
+ERROR:  Acceso no autorizado
+HINT:  ACCESO_NO_AUTORIZADO
+CONTEXT:  PL/pgSQL function public.ventas_y_ganancias(date,date) line 7 at RAISE
+ROLLBACK
+UPDATE 1
+
+=== F6. Lista de Usuarios y roles: el ADMINISTRADOR lee todos los perfiles; el TRABAJADOR solo el suyo
+BEGIN
+SET
+         nombre          |          correo           |      rol      | activo 
+-------------------------+---------------------------+---------------+--------
+ Administrador de prueba | admin@cse.test            | administrador | t
+ Carlos Ramírez T.       | nuevo.trabajador@cse.test | cliente       | t
+ Cliente de prueba       | cliente@cse.test          | cliente       | t
+ Laura Gómez             | nueva.cliente@cse.test    | cliente       | t
+ Trabajador de prueba    | trabajador@cse.test       | trabajador    | t
+ admin2                  | admin2@cse.test           | administrador | t
+(6 rows)
+
+ROLLBACK
+BEGIN
+SET
+ perfiles_que_ve_el_trabajador 
+-------------------------------
+                             1
+(1 row)
+
+ROLLBACK
+
+
+PARTE B. Lógica de la Edge Function supabase/functions/admin-usuarios/index.ts
+Se transpiló el archivo a JavaScript con el TypeScript del proyecto (sin cambiarlo) y se ejecutó en Node con un
+Supabase simulado en memoria: GET /auth/v1/user, /auth/v1/admin/users (crear, bloquear, borrar) y PostgREST de
+perfiles y clientes, con el trigger de registro (perfil cliente + ficha) y el del último administrador.
+El simulador además revisa en cada llamada que la llave secreta vaya en apikey y nunca en Authorization.
+No reemplaza la prueba en Supabase real: falta publicar la función (docs/servicio-remoto.md, sección 11)
+y probar en el teléfono. Los "Error ..." sueltos son los console.error de la función en los casos de falla simulada.
+
+OK    Sin token: 401 (la app renueva el token una vez)
+      → 401 {"message":"Tu sesión expiró, inicia sesión de nuevo","hint":"SESION_EXPIRADA","code":"P0001","details":null}
+OK    Token falso: 401
+      → 401 {"message":"Tu sesión expiró, inicia sesión de nuevo","hint":"SESION_EXPIRADA","code":"P0001","details":null}
+OK    Un CLIENTE llama: 403 Acceso no autorizado
+      → 403 {"message":"Acceso no autorizado","hint":"ACCESO_NO_AUTORIZADO","code":"P0001","details":null}
+OK    GET en vez de POST: 400
+      → 400 {"message":"Usa POST","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    Acción desconocida: 400
+      → 400 {"message":"Acción no reconocida","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    Crear con teléfono con letras: 400
+      → 400 {"message":"El teléfono solo debe contener números, entre 7 y 15 dígitos","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    Crear con correo inválido: 400
+      → 400 {"message":"Ingresa un correo con el formato nombre@dominio.com","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    Crear con contraseña corta: 400
+      → 400 {"message":"La contraseña debe tener al menos 6 caracteres","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    Crear sin nombre: 400
+      → 400 {"message":"Ingresa el nombre","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    Crear con rol inválido: 400
+      → 400 {"message":"Elige el rol del usuario","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+OK    ADMIN crea un TRABAJADOR: 201, correo en minúsculas, teléfono sin espacios, sin ficha de cliente
+      → 201 {"id":"44551b39-c795-442d-b3dd-3492bf556823","nombre":"Carlos Ramírez","correo":"carlos@ejemplo.com","telefono":"3114567890","rol":"trabajador","activo":true,"cliente_id"
+      fichas de cliente con su usuario_id: 0 (esperado 0)
+OK    Correo repetido (otra mayúscula): 409 CORREO_REGISTRADO
+      → 409 {"message":"Ya existe un usuario con ese correo","hint":"CORREO_REGISTRADO","code":"P0001","details":null}
+OK    ADMIN crea un CLIENTE: conserva su ficha de cliente
+      → 201 {"id":"74b45372-60e4-48cc-9b1a-b701b224f479","nombre":"Laura Gómez","correo":"laura@ejemplo.com","telefono":"3114567890","rol":"cliente","activo":true,"cliente_id":"9e004
+OK    ADMIN intenta cambiar SU PROPIO rol: 403
+      → 403 {"message":"No puedes cambiar tu propio rol","hint":"ACCESO_NO_AUTORIZADO","code":"P0001","details":null}
+OK    ADMIN edita SU PROPIO nombre y teléfono (mismo rol): 200
+      → 200 {"id":"cdb57865-3d26-4214-b179-340ae44836d0","nombre":"Admin Principal","correo":"admin@cse.test","telefono":"3000000000","rol":"administrador","activo":true,"cliente_id"
+OK    ADMIN se desactiva a sí mismo: 403
+      → 403 {"message":"No puedes desactivar tu propia cuenta","hint":"ACCESO_NO_AUTORIZADO","code":"P0001","details":null}
+OK    Editar un id que no existe: 404 USUARIO_NO_ENCONTRADO
+      → 404 {"message":"Usuario no encontrado","hint":"USUARIO_NO_ENCONTRADO","code":"P0001","details":null}
+OK    Trabajador pasa a CLIENTE: se le crea ficha de cliente y se enlaza
+      → 200 {"id":"44551b39-c795-442d-b3dd-3492bf556823","nombre":"Carlos R.","correo":"carlos@ejemplo.com","telefono":"3114567890","rol":"cliente","activo":true,"cliente_id":"5638e5
+      ficha: {"nombre":"Carlos R.","tipo":"final","usuario_id_ok":true}
+OK    Vuelve a trabajador y otra vez a cliente: reutiliza la misma ficha (no crea otra)
+      → 200 {"id":"44551b39-c795-442d-b3dd-3492bf556823","nombre":"Carlos R.","correo":"carlos@ejemplo.com","telefono":"3114567890","rol":"cliente","activo":true,"cliente_id":"5638e5
+OK    Desactivar al cliente: 200 activo=false
+      → 200 {"id":"7d9b6a8e-49c4-41ff-8dd6-04eeac9ccca6","nombre":"Cliente","correo":"cliente@cse.test","telefono":null,"rol":"cliente","activo":false,"cliente_id":"059a3863-cb97-4cd
+      bloqueo en Auth: 876000h (esperado 876000h)
+OK    El cliente desactivado ya no puede llamar la función: 403
+      → 403 {"message":"Acceso no autorizado","hint":"ACCESO_NO_AUTORIZADO","code":"P0001","details":null}
+OK    Activarlo de nuevo: 200 activo=true
+      → 200 {"id":"7d9b6a8e-49c4-41ff-8dd6-04eeac9ccca6","nombre":"Cliente","correo":"cliente@cse.test","telefono":null,"rol":"cliente","activo":true,"cliente_id":"059a3863-cb97-4cdd
+      bloqueo en Auth: none (esperado none)
+OK    cambiar_estado sin "activo" booleano: 400
+      → 400 {"message":"Indica si el usuario queda activo o inactivo","hint":"DATOS_INVALIDOS","code":"P0001","details":null}
+No se pudo cambiar el bloqueo en Auth 500 {"msg":"falla"}
+OK    Si Auth no bloquea, el perfil vuelve a como estaba: 500
+      → 500 {"message":"No se pudo cambiar el acceso del usuario. Intenta de nuevo.","hint":"ERROR_SERVIDOR","code":"P0001","details":null}
+      perfil activo después de la falla: true (esperado true)
+Error de PostgREST 500 {"message":"x","code":"XX000","hint":null}
+OK    Si falla poner el rol al crear, se borra el usuario a medias: 500
+      → 500 {"message":"No se pudo guardar el usuario. Intenta de nuevo.","hint":"ERROR_SERVIDOR","code":"P0001","details":null}
+      usuarios de Auth antes/después: 4 4 | fichas huérfanas: 0
+OK    Crear un segundo ADMINISTRADOR: 201 sin ficha
+      → 201 {"id":"099d5b47-0675-4793-9c2a-a2356b8e2739","nombre":"Carlos Ramírez","correo":"admin2@ejemplo.com","telefono":"3114567890","rol":"administrador","activo":true,"cliente_
+OK    admin2 pasa al admin original a trabajador: 200
+      → 200 {"id":"cdb57865-3d26-4214-b179-340ae44836d0","nombre":"Admin","correo":"admin@cse.test","telefono":"3000000000","rol":"trabajador","activo":true,"cliente_id":null,"creado
+OK    El admin original (ahora trabajador) ya no puede usar la función: 403
+      → 403 {"message":"Acceso no autorizado","hint":"ACCESO_NO_AUTORIZADO","code":"P0001","details":null}
+OK    admin2 le devuelve el rol de administrador: 200
+      → 200 {"id":"cdb57865-3d26-4214-b179-340ae44836d0","nombre":"Admin","correo":"admin@cse.test","telefono":"3000000000","rol":"administrador","activo":true,"cliente_id":null,"cre
+OK    Admin desactiva a otro admin (queda él activo): 200
+      → 200 {"id":"099d5b47-0675-4793-9c2a-a2356b8e2739","nombre":"Carlos Ramírez","correo":"admin2@ejemplo.com","telefono":"3114567890","rol":"administrador","activo":false,"cliente
+OK    La base rechaza dejar cero administradores: 400 ULTIMO_ADMINISTRADOR con su mensaje
+      → 400 {"message":"Debe quedar al menos un administrador activo","hint":"ULTIMO_ADMINISTRADOR","code":"P0001","details":null}
+
+TODOS LOS CASOS PASARON

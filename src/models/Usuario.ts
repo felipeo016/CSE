@@ -35,3 +35,24 @@ export interface DatosRegistro {
   telefono: string;
   contrasena: string;
 }
+
+/**
+ * Usuario en la pantalla Usuarios y roles (RF-34): lo que ve el administrador de cada cuenta.
+ * Agrega el nombre visible del rol y las iniciales para el círculo de la lista (mockup).
+ */
+export interface UsuarioAdmin extends Usuario {
+  rolNombre: string;
+  iniciales: string;
+}
+
+/**
+ * Datos del formulario de usuario, tal como los escribe el administrador. Al editar no se usan
+ * correo ni contraseña (el correo no se cambia y la contraseña la maneja el usuario).
+ */
+export interface DatosUsuarioAdmin {
+  nombre: string;
+  correo: string;
+  telefono: string;
+  contrasena: string;
+  rol: Rol;
+}

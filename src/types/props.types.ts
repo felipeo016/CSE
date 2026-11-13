@@ -25,7 +25,8 @@ import type { EstadoSeguimiento, PuntoMapa } from '../models/Mapa';
 import type { LineaPedido, Pedido } from '../models/Pedido';
 import type { ProductoPersonal, ProductoSegunRol, TipoCliente } from '../models/Producto';
 import type { Ubicacion } from '../models/Ubicacion';
-import type { Rol, Usuario } from '../models/Usuario';
+import type { Rol, Usuario, UsuarioAdmin } from '../models/Usuario';
+import type { TotalesVentas, VentaProducto } from '../models/Ventas';
 
 /** Nombre de un ícono del set Feather (@expo/vector-icons), el estilo de íconos del mockup. */
 export type NombreIcono = ComponentProps<typeof Feather>['name'];
@@ -570,7 +571,11 @@ export interface AvisoErrorAccionProps {
 /** Tarjeta de un pedido en Mis pedidos: fecha, número, total y estado (RF-14). */
 export interface TarjetaPedidoProps {
   pedido: Pedido;
-  onPress: () => void;
+  /**
+   * Abre el detalle. Opcional desde F8: en el historial del detalle de cliente (personal) no hay
+   * pantalla de detalle de pedido para el trabajador, así que la tarjeta solo se muestra.
+   */
+  onPress?: () => void;
 }
 
 /** Una línea del detalle de pedido. */
@@ -649,4 +654,91 @@ export interface BotonInicioProps {
   /** true: relleno azul (Solicitar cotización); false: con borde. */
   principal?: boolean;
   onPress: () => void;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Administración (F8): Usuarios y roles, Panel general e historial del cliente
+// ---------------------------------------------------------------------------------------------
+
+/** Formulario de usuario: null para crear; el usuario cargado para editar (RF-34). */
+export interface FormularioUsuarioProps {
+  usuario: UsuarioAdmin | null;
+}
+
+/** Tarjeta de la lista de Usuarios y roles: iniciales, nombre, correo, rol y estado (mockup). */
+export interface TarjetaUsuarioProps {
+  usuario: UsuarioAdmin;
+  onPress: () => void;
+}
+
+/** Píldora de color con el rol (mockup: Cliente azul claro, Trabajador verde, Administrador marino). */
+export interface EtiquetaRolProps {
+  rol: Rol;
+}
+
+/** Flechas y nombre del mes del Panel general (RF-35). */
+export interface SelectorMesProps {
+  /** Mes elegido, "AAAA-MM". */
+  mes: string;
+  onCambiar: (mes: string) => void;
+}
+
+/** Tarjetas de totales del periodo arriba del Panel general. */
+export interface TotalesVentasProps {
+  totales: TotalesVentas;
+}
+
+/** Tarjeta pequeña de un total del Panel general: ícono en círculo, valor y etiqueta (mockup). */
+export interface TarjetaDatoVentaProps {
+  icono: NombreIcono;
+  /** Color del ícono; el círculo usa el mismo color, transparente. */
+  color: string;
+  valor: string;
+  etiqueta: string;
+}
+
+/**
+ * Tarjeta de resumen del Panel general (pedidos del mes, cotizaciones pendientes, citas
+ * programadas, stock bajo). Cada una con su carga y su error.
+ */
+export interface TarjetaIndicadorProps {
+  icono: NombreIcono;
+  /** Color del ícono y de su círculo (transparente). */
+  color: string;
+  etiqueta: string;
+  /** null mientras carga o si falló. */
+  valor: number | null;
+  cargando: boolean;
+  /** Mensaje del error o null. */
+  error: string | null;
+  onReintentar: () => void;
+  /** Abre su lista; sin onPress la tarjeta no se puede tocar. */
+  onPress?: () => void;
+}
+
+/** Las cuatro tarjetas de resumen del Panel general. */
+export interface TarjetasResumenPanelProps {
+  /** Mes elegido, "AAAA-MM": lo usa Pedidos del mes. */
+  mes: string;
+}
+
+/** Gráfica de barras del Panel general: productos vendidos, de mayor a menor venta. */
+export interface GraficaVentasProps {
+  productos: VentaProducto[];
+}
+
+/** Tarjeta de un producto en el Panel general: unidades y ventas por tipo de cliente y ganancia. */
+export interface TarjetaVentaProductoProps {
+  venta: VentaProducto;
+}
+
+/** Título y contenido de una sección del historial del detalle de cliente (RF-33). */
+export interface SeccionHistorialProps {
+  titulo: string;
+  children: ReactNode;
+}
+
+/** Historial del detalle de cliente: todas las listas son solo de ese cliente. */
+export interface HistorialClienteProps {
+  clienteId: string;
 }
