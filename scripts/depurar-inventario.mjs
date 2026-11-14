@@ -15,7 +15,7 @@
 // El Excel es del cliente y no viene en el repositorio. Si no está en datos/inventario.xlsx, el
 // script lo avisa y termina sin cambiar nada (inventario_inicial.sql queda como está).
 //
-// Reglas de prueba (CLAUDE.md, "Excel (RF-32)") y decisiones del equipo en F7:
+// Reglas de prueba del equipo para el Excel (RF-32) y decisiones del equipo en F7:
 //   VALOR DE PRUEBA — [Por confirmar con el cliente] (RF-32)
 //   * Se cargan las hojas más recientes: la mensual más reciente (OCTUBRE 26) y la HiLook más
 //     reciente (HILOOK AGOSTO 26). Los productos que solo están en hojas anteriores no se cargan.
