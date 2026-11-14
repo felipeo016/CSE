@@ -51,7 +51,7 @@ Marca: ✅ listo · ⏳ falta hacer a mano · ⚠️ listo con pendientes.
    nuevas), sección 8 (usar `docs/matriz-requisitos.md`), sección 10 (usar `docs/pruebas.md`),
    sección 11 (resultado de la prueba con el cliente), sección 12 (límites), decisiones 007 a 009 y
    sección 13 (bitácora, quitando las tres filas "[Pendiente]").
-7. ⏳ **Bitácora**: poner el PR de C2 en su fila (las demás ya tienen su PR) y llenar la
+7. ⏳ **Bitácora**: llenar la
    columna **Observación del docente** de cada revisión con lo que dijo la profesora. Decidir si se
    borran las tres filas "[Pendiente]" de los hitos 2, 3 y 4 al final de `docs/bitacora.md` (ya
    quedaron cubiertas por las filas con fecha).
