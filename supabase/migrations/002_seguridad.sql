@@ -533,7 +533,7 @@ create trigger citas_10_proteger
 -- -------------------------------------------------------------------------------------
 -- 6. Registro en Supabase Auth: al crearse un usuario se crea su ficha de cliente y su perfil
 --    con rol "cliente" (autorregistro permitido, RF-02). El rol solo lo cambia un administrador.
---    La app envía nombre y teléfono en "data" al registrarse (ver docs/servicio-remoto.md).
+--    La app envía nombre y teléfono en "data" al registrarse (ver el README, "Acceso al servicio HTTP").
 -- -------------------------------------------------------------------------------------
 create or replace function public.crear_perfil_nuevo_usuario()
 returns trigger

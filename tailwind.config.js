@@ -1,5 +1,5 @@
 /**
- * Tema visual de la app, tomado de los mockups (carpeta mockup/).
+ * Tema visual de la app, tomado de los mockups de diseño del proyecto.
  * Los nombres son semánticos para usarlos así: bg-primario, text-texto-suave, border-borde...
  *
  * @type {import('tailwindcss').Config}

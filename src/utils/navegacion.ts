@@ -37,7 +37,7 @@ export function rutaConfirmacionPedido(
 /**
  * Pantalla de inicio de cada rol (RF-01). El administrador entra a las pestañas del trabajador,
  * donde además ve la pestaña Panel general y la opción Usuarios y roles del Drawer.
- * Las pestañas están dentro del grupo (drawer): ver docs/cambios-estructura.md.
+ * Las pestañas están dentro del grupo (drawer), para que los flujos queden en el Stack raíz.
  */
 export function rutaInicioPorRol(rol: Rol) {
   return rol === 'cliente'

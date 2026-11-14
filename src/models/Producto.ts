@@ -94,7 +94,7 @@ export interface DatosProducto {
 export const PREFIJO_CODIGO_PROVISIONAL = 'SIN-COD';
 
 /**
- * Motivos por los que un producto necesita revisión del negocio (docs/depuracion-inventario.md):
+ * Motivos por los que un producto necesita revisión del negocio (casos de la depuración del Excel, RF-32):
  * no tiene código o tiene uno provisional SIN-COD-…, no tiene precio de instalador o vende por
  * debajo del costo. Lista vacía = no hay nada que revisar.
  */

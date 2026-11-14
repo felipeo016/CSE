@@ -11,7 +11,7 @@ export type ResultadoValidacion = string | null;
 /** Mínimo de caracteres de la contraseña: es el mínimo que exige Supabase Auth por defecto. */
 export const LONGITUD_MINIMA_CONTRASENA = 6;
 
-/** Dígitos que acepta el servidor para el teléfono (docs/servicio-remoto.md, registro). */
+/** Dígitos que acepta el servidor para el teléfono (validación del registro en supabase/migrations/002_seguridad.sql). */
 export const DIGITOS_MINIMOS_TELEFONO = 7;
 export const DIGITOS_MAXIMOS_TELEFONO = 15;
 

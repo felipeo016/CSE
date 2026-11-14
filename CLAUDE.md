@@ -6,13 +6,20 @@ ejecutar y explicar lo que desarrolló, y puede pedir un cambio en vivo sobre el
 
 ## Fuentes de verdad
 
-- `docs/documentacion-proyecto.md`: requerimientos (RF/RNF), reglas de negocio (sección 5), mapa de
-  pantallas (sección 6), organización del código (sección 7), matriz (8), conservación (9), pruebas (10).
-  Se sigue al pie de la letra.
-- `docs/lineamientos-profesora.md`: requisitos académicos obligatorios.
-- `mockup/`: diseño visual. Copia distribución, colores, tipografía, íconos y textos visibles.
-- `referencia-clase/`: proyecto base y trabajos de clase. No se compila ni se modifica. Úsalos como guía
-  de estilo y convenciones (nombres, forma de servicios, hooks, stores y tipos) y como base del mapa con
+Para la entrega, la documentación, los lineamientos, el mockup, la referencia de clase y el Excel se
+sacaron del repositorio y se archivan aparte (carpeta `CSE-archivo`, junto al proyecto, con las
+carpetas docs, mockup, referencia-clase y datos). Si un prompt los necesita, pídelos.
+
+- Documentación del proyecto (docs/documentacion-proyecto.md en el archivo): requerimientos (RF/RNF),
+  reglas de negocio (sección 5), mapa de pantallas (sección 6), organización del código (sección 7),
+  matriz (8), conservación (9), pruebas (10). Se sigue al pie de la letra.
+- Lineamientos de la profesora (docs/lineamientos-profesora.md en el archivo): requisitos académicos
+  obligatorios.
+- Mockup (carpeta mockup en el archivo): diseño visual. Copia distribución, colores, tipografía,
+  íconos y textos visibles.
+- Referencia de clase (carpeta referencia-clase en el archivo): proyecto base y trabajos de clase. No se
+  compila ni se modifica. Úsalos como guía de estilo y convenciones (nombres, forma de servicios,
+  hooks, stores y tipos) y como base del mapa con
   WebView, Leaflet, Zustand y expo-location. Se toma su enfoque, no sus versiones ni su estructura: la
   estructura de carpetas la manda la sección 7 de la documentación y la versión de Expo es SDK 58. Si un
   trabajo difiere, se sigue el proyecto.
@@ -26,7 +33,7 @@ Prioridad ante conflicto:
 ## Stack obligatorio
 
 - React Native + TypeScript (strict) + Expo SDK 58, con Expo Router. Las versiones son las de
-  `package.json` (SDK 58), aunque los trabajos de `referencia-clase/` usen otra.
+  `package.json` (SDK 58), aunque los trabajos de la referencia de clase usen otra.
 - NativeWind para estilos; al menos una fuente personalizada (expo-font); react-native-safe-area-context.
 - Zustand para estado compartido entre pantallas; persist con AsyncStorage solo para sesión y carrito.
 - TanStack Query para estado remoto (queryKey por recurso, staleTime/gcTime definidos).
@@ -43,7 +50,7 @@ Prioridad ante conflicto:
 La de la sección 7 de la documentación, más `src/config/`. `app/` solo contiene rutas y pantallas;
 la lógica va en `src/` (components, hooks, services, types, models, mappers, store, utils, config).
 Si Expo Router o una pantalla obliga a cambiar la estructura, haz el cambio mínimo y anótalo en
-`docs/cambios-estructura.md` (qué, por qué, prompt).
+el registro de cambios de estructura (docs/cambios-estructura.md, archivado fuera del repositorio).
 
 ## Reglas de código
 
@@ -87,7 +94,7 @@ Navegación (la documentación se contradice entre RF-03 y las secciones 6 y 7; 
 - Administrador: todo lo del trabajador + pestaña Panel general + opción Usuarios y roles en el Drawer.
 - Stack para los flujos (producto/[id], cotizacion/[id], solicitar cotización, crear cotización, mapa,
   agendar cita, confirmación de pedido, formularios). El mapa es una ruta compartida por cliente y trabajador.
-- Se agrega detalle de pedido (Mis pedidos lo exige) y se anota en docs/cambios-estructura.md.
+- Se agrega detalle de pedido (Mis pedidos lo exige) y se anotó en el registro de cambios de estructura (archivado fuera del repositorio).
 
 Valores de prueba ([Por confirmar con el cliente], sección 12). Cada uno se marca en código con
 `// VALOR DE PRUEBA — [Por confirmar con el cliente] (RF-xx)`.
@@ -129,7 +136,7 @@ Valores de prueba ([Por confirmar con el cliente], sección 12). Cada uno se mar
 ## Al terminar cada prompt
 
 1. `npm run typecheck` sin errores y la app arranca con `npx expo start` sin errores.
-2. Agrega una fila en `docs/bitacora.md`: fecha de hoy, objetivo (hito), tarea realizada, responsable
+2. Agrega una fila en la bitácora (docs/bitacora.md, archivada fuera del repositorio): fecha de hoy, objetivo (hito), tarea realizada, responsable
    (el del prompt), evidencia "rama/commit: [pendiente]", dificultad encontrada, observación del docente
    vacía y siguiente paso.
 3. Responde con:

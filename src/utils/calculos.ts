@@ -5,8 +5,8 @@ import type { TipoServicio } from '../models/Cotizacion';
 /**
  * Cálculo del total del carrito y de la cotización (sección 5, RF-12, RF-17).
  * Son funciones puras: reciben números y devuelven un resultado, sin pantallas ni peticiones.
- * Siguen exactamente la fórmula del servidor (docs/servicio-remoto.md y
- * supabase/migrations/003_funciones.sql) para que el total de la app sea el mismo:
+ * Siguen exactamente la fórmula del servidor
+ * (supabase/migrations/003_funciones.sql) para que el total de la app sea el mismo:
  *
  *   subtotal = Σ precio × cantidad
  *   base     = subtotal − descuento            (el descuento va de 0 al subtotal)
