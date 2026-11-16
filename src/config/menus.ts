@@ -1,7 +1,7 @@
 import type { OpcionMenu } from '../types/props.types';
 
 /**
- * Opciones del menú lateral (Drawer) de cada rol, según las decisiones del equipo (CLAUDE.md).
+ * Opciones del menú lateral (Drawer) de cada rol, según las decisiones de navegación del equipo.
  * "pantalla" es el nombre del archivo dentro de app/(rol)/(drawer)/; "(tabs)" son las pestañas.
  * Cerrar sesión no está aquí: MenuLateral lo dibuja siempre al final.
  */

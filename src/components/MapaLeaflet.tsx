@@ -45,7 +45,7 @@ function leerMensaje(datos: string): MensajeDesdeMapa | null {
 
 /**
  * Mapa de OpenStreetMap con Leaflet 1.9.4 dentro de una WebView (RF-23, enfoque de
- * referencia-clase/mapas). La página está en assets/mapa/leafletHtml.ts y se maneja con mensajes:
+ * los trabajos de Mapas de la clase). La página está en assets/mapa/leafletHtml.ts y se maneja con mensajes:
  * cada vez que cambia una prop se envía el mensaje correspondiente.
  *
  * Tres marcadores distintos: negocio (gota azul marino con escudo), dispositivo (punto azul) y

@@ -38,7 +38,7 @@ const ERROR_SIN_CONEXION: ErrorCompra = {
   irAMisPedidos: false,
 };
 
-/** Traduce el error del servidor a lo que ve el cliente (hints de docs/servicio-remoto.md). */
+/** Traduce el error del servidor a lo que ve el cliente (hints de las funciones de Supabase). */
 function errorParaMostrar(error: ErrorApi): ErrorCompra {
   if (error.tipo === 'sin_conexion') {
     return ERROR_SIN_CONEXION;

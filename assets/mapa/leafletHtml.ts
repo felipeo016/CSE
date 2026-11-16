@@ -1,7 +1,7 @@
 /**
  * Página HTML del mapa (RF-23 a RF-26): OpenStreetMap con Leaflet 1.9.4 (versión fija) dentro de
  * una WebView. Está en un módulo .ts y no en un .html porque Expo Go no puede leer un .html local
- * sin instalar otra librería (ver docs/cambios-estructura.md).
+ * sin instalar otra librería.
  *
  * La página no recibe datos al crearse: todo llega por mensajes desde MapaLeaflet.tsx, así el HTML
  * nunca cambia y no se mete texto del usuario dentro del código.

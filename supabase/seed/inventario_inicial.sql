@@ -1,9 +1,10 @@
 -- =====================================================================================
 -- inventario_inicial.sql — Carga inicial de productos desde el Excel (Prompt F7, RF-32, RNF-15)
 --
--- ARCHIVO GENERADO por "npm run depurar-inventario" a partir de datos/inventario.xlsx.
+-- ARCHIVO GENERADO por "npm run depurar-inventario" a partir del Excel del inventario (no viene en
+-- el repositorio; para regenerar, colócalo en datos/inventario.xlsx).
 -- No lo edites a mano: cambia el Excel o scripts/depurar-inventario.mjs y vuelve a generarlo.
--- El informe con cada caso para el cliente está en docs/depuracion-inventario.md.
+-- El script también escribe un informe con cada caso para revisar con el cliente.
 --
 -- Cómo usarlo: Supabase > SQL Editor > New query > pegar todo el archivo > Run.
 -- Requiere 001 a 007 aplicadas. Se ejecuta una vez, después de los datos de prueba.

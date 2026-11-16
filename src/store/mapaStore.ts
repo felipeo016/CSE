@@ -4,7 +4,7 @@ import type { Coordenadas } from '../config/valoresPrueba';
 import type { EstadoSeguimiento } from '../models/Mapa';
 
 /**
- * Store del mapa (RF-24 a RF-26), con el enfoque de useLocationStore de referencia-clase/mapas.
+ * Store del mapa (RF-24 a RF-26), con el enfoque de useLocationStore de los trabajos de Mapas de la clase.
  * Comparte entre el Mapa y el formulario Registrar ubicación:
  * - el punto elegido en el mapa (el formulario lo lee al volver del mapa),
  * - la ubicación activa del dispositivo,

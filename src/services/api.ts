@@ -7,7 +7,7 @@ import { useSesionStore } from '../store/sesionStore';
 /**
  * Única instancia de Axios del proyecto (RNF-11). Todas las peticiones a Supabase salen de aquí.
  *
- * Encabezados (docs/servicio-remoto.md, sección 3):
+ * Encabezados (README, "Acceso al servicio HTTP"):
  * - apikey: la llave publishable (sb_publishable_...). Siempre. No es un JWT y nunca va en Authorization.
  * - Authorization: "Bearer <token>" solo con el access_token del usuario cuando hay sesión.
  */
@@ -177,7 +177,7 @@ const ERRORES_AUTH: Record<string, { tipo: ErrorApi['tipo']; mensaje: string }> 
   },
 };
 
-// Tipo de error para cada hint fijo de las funciones de Supabase (docs/servicio-remoto.md).
+// Tipo de error para cada hint fijo de las funciones de Supabase (README, "Acceso al servicio HTTP").
 // El "message" de esas funciones ya viene en español y se muestra tal cual (en tú: MENSAJES_EN_TU).
 const TIPO_POR_HINT: Record<string, ErrorApi['tipo']> = {
   ACCESO_NO_AUTORIZADO: 'no_autorizado',

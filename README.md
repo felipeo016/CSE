@@ -53,38 +53,73 @@ Después monta Supabase (siguiente sección) y crea el `.env`.
 
 ## Montaje de Supabase (en orden)
 
-La guía completa, con capturas de qué revisar en cada paso, está en `docs/servicio-remoto.md`
-(secciones 2, 10 y 11). Resumen:
+Todo se hace en el panel de Supabase, sin instalar nada. Sigue este orden:
 
-1. Crea un proyecto en <https://supabase.com/dashboard> (región São Paulo o Norte de Virginia).
-2. En **SQL Editor > New query** ejecuta, uno por uno y en este orden, los archivos de
-   `supabase/migrations/`:
-   `001_esquema.sql`, `002_seguridad.sql`, `003_funciones.sql`, `004_ajustes_seguridad.sql`,
-   `005_solicitud_cotizacion.sql`, `006_borrador_cotizacion.sql`,
-   `007_borrador_oculto_cliente.sql`, `008_compras_y_citas.sql` y `009_costo_ventas.sql`.
-   (No hay migración 010: los mensajes del servidor que estaban en "usted" se pasan a "tú" en la
-   app, en `src/services/api.ts`.)
-3. Ejecuta la **parte 1** de `supabase/seed/datos_prueba.sql` (productos de prueba).
-4. Crea los usuarios de prueba en **Authentication > Users > Add user > Create new user**, con
-   **Auto Confirm User** marcado: `cliente@cse.test`, `trabajador@cse.test` y `admin@cse.test`.
-   Elige tú las contraseñas y guárdalas fuera del repositorio.
-5. Ejecuta las **partes 2 y 3** de `supabase/seed/datos_prueba.sql` (roles de trabajador y
-   administrador, y un "Otro cliente" para comprobar que un cliente no ve lo ajeno).
-6. Carga el inventario real: pega todo `supabase/seed/inventario_inicial.sql` en el SQL Editor y
-   ejecútalo **una sola vez**. Debe terminar con `Carga correcta: 76 productos del Excel`.
-7. Edge Function `admin-usuarios` (Usuarios y roles):
+1. **Proyecto.** Crea uno en <https://supabase.com/dashboard> (región São Paulo o Norte de
+   Virginia). Guarda la contraseña de la base en un lugar seguro; la app no la usa.
+2. **Migraciones.** En **SQL Editor > New query** pega y ejecuta, uno por uno y en este orden, los
+   archivos de `supabase/migrations/`:
+
+   | Archivo | Qué hace |
+   | --- | --- |
+   | `001_esquema.sql` | Tablas, restricciones e índices (incluido el código de producto único). |
+   | `002_seguridad.sql` | RLS en todas las tablas, roles, triggers de protección, perfil al registrarse y vista `productos_catalogo` sin costo. |
+   | `003_funciones.sql` | Cálculo de totales y funciones RPC (pedido, aceptar, rechazar, marcar vista, ventas). |
+   | `004_ajustes_seguridad.sql` | Quita a las funciones de trigger el permiso de ejecutarse desde la API. |
+   | `005_solicitud_cotizacion.sql` | RPC `crear_solicitud_cotizacion` (solicitud y productos de interés en una transacción). |
+   | `006_borrador_cotizacion.sql` | RPC `guardar_borrador_cotizacion` (cabecera y líneas en una transacción). |
+   | `007_borrador_oculto_cliente.sql` | El cliente no ve una cotización mientras se prepara (vista `cotizaciones_cliente`). |
+   | `008_compras_y_citas.sql` | Compra sin duplicados (`compra_id`) y citas sin repetir ni en franjas pasadas. Se puede ejecutar dos veces. |
+   | `009_costo_ventas.sql` | Guarda el costo de cada venta para calcular la ganancia. Se puede ejecutar dos veces. |
+
+   No hay migración 010: los mensajes del servidor que estaban en "usted" se pasan a "tú" en la
+   app (`src/services/api.ts`). Si 008 se detiene con "Hay citas programadas repetidas", no cambió
+   nada: cancela una de las citas repetidas y vuelve a ejecutarla.
+3. **Datos de prueba, parte 1.** Ejecuta la parte 1 de `supabase/seed/datos_prueba.sql`
+   (productos de prueba).
+4. **Usuarios de prueba.** En **Authentication > Users > Add user > Create new user**, con **Auto
+   Confirm User** marcado, crea `cliente@cse.test`, `trabajador@cse.test` y `admin@cse.test`. Elige
+   tú las contraseñas y guárdalas fuera del repositorio. Los tres quedan como clientes (lo hace un
+   trigger); el paso siguiente les da su rol. Si el panel no acepta el dominio `.test`, usa otros
+   correos y cámbialos también en `supabase/seed/datos_prueba.sql`.
+5. **Datos de prueba, partes 2 y 3.** Ejecútalas: asignan los roles de trabajador y administrador y
+   crean "Otro cliente (prueba)" para comprobar que un cliente no ve lo ajeno.
+6. **Inventario real.** Pega todo `supabase/seed/inventario_inicial.sql` en el SQL Editor y
+   ejecútalo **una sola vez**. Debe terminar con el aviso `Carga correcta: 76 productos del Excel`
+   y una fila con `activos_excel = 76` y `activos_prueba = 0`. Va en una transacción: si algo
+   falla, la base queda como estaba. Los productos de prueba con el mismo código se actualizan con
+   los datos del Excel (conservan su id); los que no están en el Excel se desactivan si una
+   cotización o un pedido los usa y se borran si no. Ejecutarlo otra vez no duplica nada, pero
+   vuelve a poner los precios e inventarios del Excel y se pierden los cambios hechos en la app.
+7. **Edge Function `admin-usuarios`** (Usuarios y roles; crear usuarios exige una llave que no
+   puede ir en la app):
    1. **Project Settings > API Keys > Secret keys > Add new secret key** (por ejemplo
-      `admin_usuarios`) y copia la llave `sb_secret_...`.
-   2. **Edge Functions > Secrets > Add new secret**: nombre `CSE_LLAVE_SECRETA`, valor esa llave.
-   3. **Edge Functions > Deploy a new function > Via Editor**, nombre `admin-usuarios`, pega todo
-      `supabase/functions/admin-usuarios/index.ts` y publícala.
-   4. En la función, apaga **Verify JWT with legacy secret** y guarda.
+      `admin_usuarios`) y copia la llave que empieza por `sb_secret_`.
+   2. **Edge Functions > Secrets > Add new secret**: nombre `CSE_LLAVE_SECRETA` (exacto), valor
+      esa llave. `SUPABASE_URL` ya existe; no hay que crearla.
+   3. **Edge Functions > Functions > Deploy a new function > Via Editor**, nombre `admin-usuarios`
+      (exacto), borra el ejemplo, pega todo `supabase/functions/admin-usuarios/index.ts` y pulsa
+      **Deploy function**.
+   4. En la función, apaga **Verify JWT with legacy secret** y guarda: la función ya comprueba el
+      token y que quien llama sea administrador activo.
 
-   La llave secreta solo va en ese secreto: **nunca** en el `.env`, en el código ni en Git.
-8. **Authentication > Sign In / Providers > Email**: apaga **Confirm email**. Así quien se registra
-   desde la app puede iniciar sesión enseguida (la app no envía correos).
-9. **Advisors > Security Advisor**: debe dar 0 errores y 13 advertencias aceptadas (explicadas en
-   `docs/servicio-remoto.md`, sección 9).
+   La llave secreta salta todas las políticas: **solo** va en ese secreto, nunca en el `.env`, en
+   el código ni en Git. Si la función falla, revisa **Edge Functions > admin-usuarios > Logs**.
+8. **Confirm email apagado.** En **Authentication > Sign In / Providers > Email**, apaga **Confirm
+   email**: la app no envía correos, así que quien se registra inicia sesión enseguida. Los
+   usuarios que crea el administrador desde la app ya quedan confirmados.
+9. **Revisión.** **Advisors > Security Advisor** debe dar 0 errores y 13 advertencias aceptadas:
+   12 funciones SECURITY DEFINER que un usuario con sesión puede ejecutar (cada una revisa el rol
+   por dentro) y Leaked Password Protection (no está en el plan gratuito). Después corre
+   `npm run verificar-seguridad` (más abajo).
+
+Comprobación rápida del inventario en el SQL Editor (las dos deben dar 0):
+
+```sql
+select upper(trim(codigo)), count(*) from public.productos
+where codigo is not null group by 1 having count(*) > 1;
+select count(*) from public.productos where inventario < 0;
+```
 
 El plan gratuito **pausa el proyecto tras una semana sin uso**: antes de una demostración entra al
 panel y, si está pausado, pulsa **Restore project** (tarda unos minutos).
@@ -117,10 +152,53 @@ al repositorio. Después de cambiarlo, reinicia con `npx expo start --clear`.
 ### Acceso al servicio HTTP
 
 Toda petición sale de una sola instancia de Axios (`src/services/api.ts`) con
-`baseURL = EXPO_PUBLIC_SUPABASE_URL`, el encabezado `apikey` con la publishable key y, con sesión,
-`Authorization: Bearer <token del usuario>`. Rutas usadas: `/auth/v1` (inicio de sesión y
-registro), `/rest/v1` (tablas, vistas y funciones RPC) y `/functions/v1/admin-usuarios`. La lista
-completa está en `docs/servicio-remoto.md`, sección 4.
+`baseURL = EXPO_PUBLIC_SUPABASE_URL`. Encabezados:
+
+| Encabezado | Valor | Cuándo |
+| --- | --- | --- |
+| `apikey` | La publishable key | Siempre |
+| `Authorization` | `Bearer <access_token del usuario>` (nunca la publishable key) | Con sesión |
+| `Prefer` | `return=representation` | POST y PATCH a tablas, para recibir la fila guardada |
+
+Sin sesión la petición entra como `anon`, que no puede leer ninguna tabla: solo sirven el registro
+y el inicio de sesión.
+
+**Auth (`/auth/v1`)**
+
+| Acción | Método y ruta |
+| --- | --- |
+| Registro | `POST /auth/v1/signup` con `{ email, password, data: { nombre, telefono } }` (teléfono de 7 a 15 dígitos) |
+| Iniciar sesión | `POST /auth/v1/token?grant_type=password` |
+| Renovar el token | `POST /auth/v1/token?grant_type=refresh_token` |
+| Cerrar sesión | `POST /auth/v1/logout` |
+
+**REST (`/rest/v1`)**
+
+| Uso | Método y ruta |
+| --- | --- |
+| Catálogo y detalle del cliente | `GET /rest/v1/productos_catalogo` (vista sin costo; `?id=eq.<id>` vacía = "Producto no encontrado") |
+| Parámetros de cálculo (IVA y tarifas) | `GET /rest/v1/parametros_negocio?id=eq.1` |
+| Perfil y usuarios | `GET` y `PATCH /rest/v1/perfiles` |
+| Productos del personal | `GET`, `POST`, `PATCH /rest/v1/productos` (eliminar = `PATCH {"activo": false}`) |
+| Clientes | `GET`, `POST`, `PATCH /rest/v1/clientes` |
+| Cotizaciones del personal | `GET /rest/v1/cotizaciones` (con `estado_actual` y líneas); enviar = `PATCH` con `{"estado": "nueva"}` |
+| Bandeja y detalle del cliente | `GET /rest/v1/cotizaciones_cliente` |
+| Pedidos | `GET /rest/v1/pedidos` (con sus líneas) |
+| Ubicaciones | `GET`, `POST /rest/v1/ubicaciones` |
+| Citas | `GET`, `POST /rest/v1/citas`; el personal cambia el estado con `PATCH` |
+
+**RPC (`POST /rest/v1/rpc/<función>`)**: `crear_solicitud_cotizacion` (cliente),
+`guardar_borrador_cotizacion` (personal), `registrar_pedido_carrito` (cliente, con `compra_id`),
+`aceptar_cotizacion`, `rechazar_cotizacion` y `marcar_cotizacion_vista` (cliente dueño) y
+`ventas_y_ganancias` (administrador).
+
+**Edge Function**: `POST /functions/v1/admin-usuarios` con `accion` = `crear`, `editar` o
+`cambiar_estado` (solo administrador activo).
+
+Errores: PostgREST responde `{ message, hint, details, code }`. `message` es el texto para el
+usuario y `hint` un código fijo (`INVENTARIO_INSUFICIENTE`, `COTIZACION_VENCIDA`,
+`COMPRA_YA_REGISTRADA`, `CITA_REPETIDA`, `FRANJA_PASADA`, `ACCESO_NO_AUTORIZADO`…) que el
+interceptor de `api.ts` convierte en el error que muestra cada pantalla.
 
 ## Comandos
 
@@ -131,7 +209,7 @@ completa está en `docs/servicio-remoto.md`, sección 4.
 | `npx expo start --clear` | Arranca limpiando la caché (después de cambiar `.env` o `tailwind.config.js`). |
 | `npm run typecheck` | Revisa los tipos de TypeScript sin generar archivos. Debe terminar sin errores. |
 | `npx expo-doctor` | Revisa que las dependencias sean compatibles con Expo SDK 58. |
-| `npm run depurar-inventario` | Lee `datos/inventario.xlsx` y regenera `docs/depuracion-inventario.md` y `supabase/seed/inventario_inicial.sql`. No se conecta a Supabase. |
+| `npm run depurar-inventario` | Lee el Excel del inventario y regenera `supabase/seed/inventario_inicial.sql` y un informe de los casos a revisar. No se conecta a Supabase. El Excel no viene en el repositorio: para usarlo, colócalo en `datos/inventario.xlsx` (si falta, el comando avisa y termina sin cambiar nada); el informe se escribe en `docs/depuracion-inventario.md` y la carpeta se crea sola. |
 | `npm run verificar-seguridad` | Inicia sesión como cliente de prueba y comprueba contra Supabase que no recibe costo ni ganancia y que no puede modificar productos (ver abajo). |
 
 ### `npm run verificar-seguridad`
@@ -240,11 +318,6 @@ Necesitas una cuenta gratuita de Expo y no hace falta instalar nada en el proyec
 
 ## Documentación
 
-- `docs/documentacion-proyecto.md`: requerimientos, reglas de negocio, pantallas y pruebas.
-- `docs/servicio-remoto.md`: Supabase (montaje, URLs, seguridad, límites, carga del inventario).
-- `docs/limites-conocidos.md`: lo que la versión entregada no hace y cómo se resolvería.
-- `docs/valores-por-confirmar.md`: valores de prueba y casos del Excel para confirmar con el cliente.
-- `docs/actualizar-informe.md`: cambios que hay que pasar a mano al Word de la documentación.
-- `docs/depuracion-inventario.md`: informe de la depuración del Excel (RF-32).
-- `docs/cambios-estructura.md`: cambios a la estructura de carpetas.
-- `docs/bitacora.md`: bitácora de avances.
+El informe del proyecto (requerimientos, reglas de negocio, matriz, pruebas, límites conocidos y
+bitácora) se entrega aparte y no está en este repositorio. Este README tiene todo lo necesario para
+instalar, montar el servicio y probar la app.

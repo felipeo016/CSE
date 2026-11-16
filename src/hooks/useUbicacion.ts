@@ -92,7 +92,7 @@ async function conTiempoLimite<T>(promesa: Promise<T>, ms: number): Promise<T | 
 /**
  * Hook propio de la ubicación del dispositivo (RF-24, RF-25, RNF-13, RNF-14). Es el segundo hook
  * propio del proyecto (el primero es useCalculoTotal) y sigue el enfoque de
- * referencia-clase/mapas (location/ y useLocationStore) con expo-location en primer plano.
+ * los trabajos de Mapas de la clase (location/ y useLocationStore) con expo-location en primer plano.
  *
  * Entradas: opciones.alCentrar, la función que mueve el mapa a la posición obtenida.
  *

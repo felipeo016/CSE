@@ -24,7 +24,7 @@
 --      * Una cita de hoy en una franja que ya empezó, en hora de Colombia (FRANJA_PASADA).
 --    Una cita cancelada (o realizada) no ocupa la franja.
 --
--- Hints nuevos (docs/servicio-remoto.md):
+-- Hints nuevos (README, "Acceso al servicio HTTP"):
 --   COMPRA_YA_REGISTRADA  Tu compra anterior ya quedó registrada como PED-00012. Revísala en Mis pedidos.
 --   CITA_REPETIDA         Ya tienes una cita programada en ese día y franja.
 --   FRANJA_PASADA         Esa franja ya pasó. Elige otra franja u otro día
@@ -337,7 +337,7 @@ begin
     having count(*) > 1
   ) then
     raise exception 'Hay citas programadas repetidas (mismo cliente, día y franja). Revísalas antes de aplicar 008.'
-      using hint = 'Consulta en docs/servicio-remoto.md, paso 8 del montaje.';
+      using hint = 'Consulta el README, "Montaje de Supabase", paso 2.';
   end if;
 end;
 $$;

@@ -22,7 +22,7 @@
 //   CORREO_REGISTRADO (nuevo) y USUARIO_NO_ENCONTRADO (nuevo).
 //
 // No usa librerías: solo fetch contra la API de Auth (/auth/v1/admin) y PostgREST (/rest/v1).
-// Se publica desde el panel o con la Supabase CLI: ver docs/servicio-remoto.md, sección 11.
+// Se publica desde el panel o con la Supabase CLI: ver el README, "Montaje de Supabase", paso 7.
 // =====================================================================================
 
 type Rol = 'cliente' | 'trabajador' | 'administrador';

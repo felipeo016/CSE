@@ -5,13 +5,17 @@
 // Uso:  npm run depurar-inventario
 //
 // Lee datos/inventario.xlsx y genera dos archivos:
-//   * docs/depuracion-inventario.md       → informe para revisar con el cliente.
+//   * docs/depuracion-inventario.md       → informe para revisar con el cliente (la carpeta se
+//                                           crea si no existe).
 //   * supabase/seed/inventario_inicial.sql → SQL que se pega en el SQL Editor de Supabase.
 //
 // No se conecta a Supabase: solo lee el Excel y escribe archivos. Si el Excel cambia, se vuelve
 // a ejecutar y los dos archivos se regeneran (el resultado es siempre el mismo para el mismo Excel).
 //
-// Reglas de prueba (CLAUDE.md, "Excel (RF-32)") y decisiones del equipo en F7:
+// El Excel es del cliente y no viene en el repositorio. Si no está en datos/inventario.xlsx, el
+// script lo avisa y termina sin cambiar nada (inventario_inicial.sql queda como está).
+//
+// Reglas de prueba del equipo para el Excel (RF-32) y decisiones del equipo en F7:
 //   VALOR DE PRUEBA — [Por confirmar con el cliente] (RF-32)
 //   * Se cargan las hojas más recientes: la mensual más reciente (OCTUBRE 26) y la HiLook más
 //     reciente (HILOOK AGOSTO 26). Los productos que solo están en hojas anteriores no se cargan.
@@ -23,6 +27,7 @@
 //   * Precio instalador vacío (o 0) → nulo.
 // =====================================================================================
 
+import { existsSync } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -529,9 +534,10 @@ function generarSql(resultado) {
   return `-- =====================================================================================
 -- inventario_inicial.sql — Carga inicial de productos desde el Excel (Prompt F7, RF-32, RNF-15)
 --
--- ARCHIVO GENERADO por "npm run depurar-inventario" a partir de datos/inventario.xlsx.
+-- ARCHIVO GENERADO por "npm run depurar-inventario" a partir del Excel del inventario (no viene en
+-- el repositorio; para regenerar, colócalo en datos/inventario.xlsx).
 -- No lo edites a mano: cambia el Excel o scripts/depurar-inventario.mjs y vuelve a generarlo.
--- El informe con cada caso para el cliente está en docs/depuracion-inventario.md.
+-- El script también escribe un informe con cada caso para revisar con el cliente.
 --
 -- Cómo usarlo: Supabase > SQL Editor > New query > pegar todo el archivo > Run.
 -- Requiere 001 a 007 aplicadas. Se ejecuta una vez, después de los datos de prueba.
@@ -668,6 +674,13 @@ from public.productos;
 // -------------------------------------------------------------------------------------
 
 async function main() {
+  // Sin el Excel no hay nada que depurar: se avisa y se termina sin tocar ningún archivo.
+  if (!existsSync(RUTA_EXCEL)) {
+    console.log('No se encontró el Excel del inventario.');
+    console.log('Coloca el Excel en datos/inventario.xlsx para regenerar la carga.');
+    return;
+  }
+
   const hojas = await leerExcel();
   const resultado = depurar(hojas);
 

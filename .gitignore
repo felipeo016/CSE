@@ -40,8 +40,12 @@ yarn-error.*
 .DS_Store
 Thumbs.db
 
-# Documentos de trabajo locales (no se suben)
-Documentación del proyecto final.docx
-Proyecto_Final_Movil_II (1).docx
-
 # Nota: package-lock.json SÍ se sube (RNF-04).
+
+# Materiales de trabajo que quedaron fuera del repositorio para la entrega.
+# El Excel del cliente se coloca aquí solo para correr npm run depurar-inventario.
+datos/
+docs/depuracion-inventario.md
+
+# Instrucciones locales de Claude Code: se quedan en la carpeta del proyecto, no en el repositorio.
+CLAUDE.md

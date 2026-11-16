@@ -26,7 +26,7 @@ interface ErrorAccion {
 
 /**
  * Traduce el error del servidor a lo que ve el cliente. Los códigos son los hint de las RPC
- * (docs/servicio-remoto.md); el interceptor de api.ts ya los dejó en error.codigo.
+ * de Supabase (lista en el README); el interceptor de api.ts ya los dejó en error.codigo.
  */
 function errorParaMostrar(error: ErrorApi, accion: Accion): Omit<ErrorAccion, 'sinConexion'> {
   const verbo = accion === 'aceptar' ? 'aceptar' : 'rechazar';
