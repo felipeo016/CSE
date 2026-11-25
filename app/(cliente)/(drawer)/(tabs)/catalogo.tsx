@@ -41,24 +41,50 @@ export default function Catalogo() {
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState<Categoria | null>(null);
   const [marca, setMarca] = useState<Marca | null>(null);
+  const [soloDisponibles, setSoloDisponibles] = useState(false);
 
-  // useMemo: solo se vuelve a filtrar cuando cambian los datos, la búsqueda o un filtro.
-  const productos = useMemo(
-    () => filtrarProductos(consulta.data ?? [], { texto: busqueda, categoria, marca }),
-    [consulta.data, busqueda, categoria, marca],
+
+
+
+
+
+  //nuevo 
+  const productos = useMemo (
+    () => {
+      const resultado = filtrarProductos(consulta.data ?? [], { texto: busqueda, categoria, marca });
+
+      //inventario mayor a 0
+      return soloDisponibles ? resultado.filter((producto) => producto.inventario > 0) : resultado;
+    },
+
+    [consulta.data, busqueda, categoria, marca, soloDisponibles],
   );
 
-  const hayCriterios = busqueda.trim() !== '' || categoria !== null || marca !== null;
+  const hayCriterios = busqueda.trim() !== ''||categoria!==null||marca!==null||soloDisponibles;
 
+
+  //para borrar busqueda fitros 
   function limpiarBusqueda() {
     setBusqueda('');
     setCategoria(null);
     setMarca(null);
+    setSoloDisponibles(false);
   }
+
+  //para navegar detalle producto 
 
   function abrirDetalle(id: string) {
     router.push({ pathname: '/producto/[id]', params: { id } });
   }
+
+
+
+
+
+
+
+
+
 
   // "+ Agregar" de la tarjeta suma 1 unidad. El indicador de la pestaña Carrito se actualiza solo.
   function agregarUno(producto: ProductoSegunRol) {
@@ -184,6 +210,13 @@ export default function Catalogo() {
           />
         ))}
       </FilaChips>
+      <FilaChips etiquetaAccesible="Filtrar por disponibilidad" className="pt-2">
+        <ChipFiltro
+          etiqueta="Solo disponibles"
+          activo={soloDisponibles}
+          onPress={() => setSoloDisponibles((actual) => !actual)}
+        />
+      </FilaChips>
 
       <View className="px-pantalla pt-bloque">
         {consulta.mostrandoCache ? (
@@ -202,3 +235,4 @@ export default function Catalogo() {
     </SafeAreaView>
   );
 }
+
