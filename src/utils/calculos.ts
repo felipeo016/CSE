@@ -47,8 +47,17 @@ export function subtotalLinea(linea: LineaCalculo): ResultadoCalculo<number> {
   if (!Number.isInteger(linea.cantidad) || linea.cantidad < 1) {
     return { ok: false, errores: ['La cantidad debe ser un número entero desde 1'] };
   }
-  return { ok: true, valor: linea.precio * linea.cantidad };
+
+  const subtotal = linea.precio * linea.cantidad;
+  if (!Number.isFinite(subtotal) || subtotal > Number.MAX_SAFE_INTEGER) {
+    return {
+      ok: false,
+      errores: ['El subtotal de la linea excede el limite de calculo'],
+    };
+  }
+  return { ok: true, valor: subtotal };
 }
+
 
 /** Subtotal general: suma de los subtotales de las líneas. Reúne los errores de todas. */
 export function subtotalGeneral(lineas: readonly LineaCalculo[]): ResultadoCalculo<number> {
